@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import type { Note, StudyWorkspace, WorkspaceAction, WorkspaceActionResult } from "@/lib/workspace/schema";
+import { workspaceActionResultSchema, type Note, type StudyWorkspace, type WorkspaceAction, type WorkspaceActionResult } from "@/lib/workspace/schema";
 
 type NotesModeProps = {
   workspace: StudyWorkspace;
@@ -44,11 +44,16 @@ export function NotesMode({ workspace, explanations, onApplyAction }: NotesModeP
           note: { id: note.id, text: note.text },
         }),
       });
-      const data = (await response.json().catch(() => null)) as WorkspaceActionResult | { error?: string } | null;
-      if (!response.ok || !data || !("action" in data)) {
-        throw new Error(data && "error" in data && data.error ? data.error : "Die Lernaktion ist fehlgeschlagen.");
+      const data = (await response.json().catch(() => null)) as unknown;
+      if (!response.ok) {
+        const errorMessage = data && typeof data === "object" && "error" in data && typeof data.error === "string"
+          ? data.error
+          : "Die Lernaktion ist fehlgeschlagen.";
+        throw new Error(errorMessage);
       }
-      onApplyAction(note, data);
+      const result = workspaceActionResultSchema.safeParse(data);
+      if (!result.success) throw new Error("Die Lernaktion hat ein ungültiges Ergebnis geliefert.");
+      onApplyAction(note, result.data);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Die Lernaktion ist fehlgeschlagen.");
     } finally {

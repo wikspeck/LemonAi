@@ -1,10 +1,9 @@
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
-import { createOpenAIClient, openAIErrorResponse } from "@/lib/openai/errors";
+import { createOpenAIService } from "@/lib/openai/client";
+import { apiError, openAIConfigurationError, openAIErrorResponse } from "@/lib/openai/errors";
 import { workspaceActionResultSchema, workspaceActionSchema } from "@/lib/workspace/schema";
-
-const MODEL = "gpt-4o-mini";
 
 const requestSchema = z.object({
   workspaceId: z.string().min(1),
@@ -19,22 +18,20 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return Response.json({ error: "Die Anfrage muss gültiges JSON enthalten." }, { status: 400 });
+    return apiError("Die Anfrage muss gültiges JSON enthalten.", "INVALID_INPUT", 400);
   }
 
   const parsed = requestSchema.safeParse(body);
   if (!parsed.success) {
-    return Response.json({ error: "Die Lernaktion ist unvollständig." }, { status: 400 });
+    return apiError("Die Lernaktion ist unvollständig.", "INVALID_INPUT", 400);
   }
 
-  const openai = createOpenAIClient();
-  if (!openai) {
-    return Response.json({ error: "Der Analyse-Dienst ist noch nicht konfiguriert." }, { status: 500 });
-  }
+  const service = await createOpenAIService();
+  if (!service) return openAIConfigurationError();
 
   try {
-    const response = await openai.responses.parse({
-      model: MODEL,
+    const response = await service.client.responses.parse({
+      model: service.model,
       max_output_tokens: 1_200,
       store: false,
       instructions: [
@@ -60,7 +57,7 @@ export async function POST(request: Request) {
     );
 
     if (!valid) {
-      return Response.json({ error: "Die Lernaktion lieferte kein gültiges Ergebnis." }, { status: 502 });
+      return apiError("Die Lernaktion lieferte kein gültiges Ergebnis.", "INVALID_OUTPUT", 502);
     }
 
     return Response.json(result);

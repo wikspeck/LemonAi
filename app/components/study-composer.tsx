@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
 
-import type { StudyWorkspace } from "@/lib/workspace/schema";
+import { studyWorkspaceSchema, type StudyWorkspace } from "@/lib/workspace/schema";
 
 const MAX_CHARACTERS = 50_000;
 
@@ -10,7 +10,7 @@ type StudyComposerProps = {
   onGenerated: (workspace: StudyWorkspace) => void;
 };
 
-type ErrorResponse = { error?: string };
+type ErrorResponse = { error?: string; code?: string };
 
 export function StudyComposer({ onGenerated }: StudyComposerProps) {
   const [sourceText, setSourceText] = useState("");
@@ -54,25 +54,27 @@ export function StudyComposer({ onGenerated }: StudyComposerProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sourceText, userPrompt }),
       });
-      const data = (await response.json().catch(() => null)) as StudyWorkspace | ErrorResponse | null;
+      const data = (await response.json().catch(() => null)) as unknown;
 
       if (!response.ok) {
-        const message = data && "error" in data && data.error
-          ? data.error
+        const errorResponse = data && typeof data === "object" ? data as ErrorResponse : null;
+        const message = errorResponse?.error
+          ? errorResponse.error
           : "Das Lernset konnte nicht erstellt werden.";
         throw new Error(message);
       }
 
-      if (!data || !("title" in data)) {
+      const workspace = studyWorkspaceSchema.safeParse(data);
+      if (!workspace.success) {
         throw new Error("Der Server hat kein vollständiges Lernset zurückgegeben.");
       }
 
-      onGenerated(data);
+      onGenerated(workspace.data);
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Das Lernset konnte nicht erstellt werden.",
+          : "Netzwerkfehler: Lemon AI konnte den Server nicht erreichen.",
       );
     } finally {
       setIsLoading(false);
@@ -112,15 +114,6 @@ export function StudyComposer({ onGenerated }: StudyComposerProps) {
 
           <div className="composer-toolbar">
             <div className="composer-actions">
-              <button
-                type="button"
-                className="quiet-button"
-                disabled
-                title="Datei-Upload folgt in einer späteren Version"
-              >
-                <span aria-hidden="true">＋</span> Datei
-                <small>Bald</small>
-              </button>
               {sourceText ? (
                 <button
                   type="button"
