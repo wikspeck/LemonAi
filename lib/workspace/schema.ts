@@ -2,7 +2,10 @@ import { z } from "zod";
 
 const requiredText = z.string().trim().min(1);
 const id = z.string().trim().min(1);
+const timestamp = z.string().datetime();
 
+export const difficultySchema = z.enum(["easy", "medium", "hard"]);
+export const detailLevelSchema = z.enum(["short", "balanced", "detailed"]);
 export const studyModuleSchema = z.enum([
   "summary",
   "bulletPoints",
@@ -14,9 +17,6 @@ export const studyModuleSchema = z.enum([
   "fillBlank",
   "learnMode",
 ]);
-
-export const difficultySchema = z.enum(["easy", "medium", "hard"]);
-export const detailLevelSchema = z.enum(["short", "balanced", "detailed"]);
 
 export const conceptSchema = z.object({
   id,
@@ -75,6 +75,13 @@ export const fillBlankQuestionSchema = z.object({
   conceptId: id.nullable(),
 });
 
+export const quizCollectionSchema = z.object({
+  multipleChoice: z.array(multipleChoiceQuestionSchema).max(20),
+  trueFalse: z.array(trueFalseQuestionSchema).max(20),
+  shortAnswer: z.array(shortAnswerQuestionSchema).max(20),
+  fillBlank: z.array(fillBlankQuestionSchema).max(20),
+});
+
 export const intentSchema = z.object({
   difficulty: difficultySchema,
   detailLevel: detailLevelSchema,
@@ -91,71 +98,234 @@ export const generatedWorkspaceSchema = z.object({
   explanation: z.string(),
   concepts: z.array(conceptSchema).min(1).max(30),
   flashcards: z.array(flashcardSchema).max(30),
-  quizzes: z.object({
-    multipleChoice: z.array(multipleChoiceQuestionSchema).max(20),
-    trueFalse: z.array(trueFalseQuestionSchema).max(20),
-    shortAnswer: z.array(shortAnswerQuestionSchema).max(20),
-    fillBlank: z.array(fillBlankQuestionSchema).max(20),
-  }),
+  quizzes: quizCollectionSchema,
+}).superRefine((workspace, context) => {
+  const conceptIds = new Set(workspace.concepts.map((concept) => concept.id));
+  for (const [index, note] of workspace.bulletPoints.entries()) {
+    if (note.conceptIds.some((conceptId) => !conceptIds.has(conceptId))) {
+      context.addIssue({ code: "custom", path: ["bulletPoints", index, "conceptIds"], message: "Unknown concept ID" });
+    }
+  }
+  for (const [index, card] of workspace.flashcards.entries()) {
+    if (card.conceptId && !conceptIds.has(card.conceptId)) {
+      context.addIssue({ code: "custom", path: ["flashcards", index, "conceptId"], message: "Unknown concept ID" });
+    }
+  }
+  for (const [index, question] of workspace.quizzes.multipleChoice.entries()) {
+    if (!question.options.includes(question.correctAnswer)) {
+      context.addIssue({ code: "custom", path: ["quizzes", "multipleChoice", index, "correctAnswer"], message: "Answer must match one option" });
+    }
+    if (question.conceptId && !conceptIds.has(question.conceptId)) {
+      context.addIssue({ code: "custom", path: ["quizzes", "multipleChoice", index, "conceptId"], message: "Unknown concept ID" });
+    }
+  }
 });
 
-export const studyWorkspaceSchema = generatedWorkspaceSchema.extend({
+export const workspaceSourceSchema = z.object({
   id,
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-  sourceText: requiredText,
-  request: intentSchema.extend({ originalPrompt: z.string() }),
+  type: z.literal("text"),
+  title: requiredText,
+  content: requiredText,
+  createdAt: timestamp,
+});
+
+const outputBase = {
+  id,
+  workspaceId: id,
+  title: requiredText,
+  createdAt: timestamp,
+  sourceIds: z.array(id).min(1),
+  prompt: z.string(),
+};
+
+export const timelineEventSchema = z.object({
+  id,
+  date: requiredText,
+  title: requiredText,
+  description: requiredText,
+  conceptId: id.nullable(),
+});
+
+export const comparisonRowSchema = z.object({
+  id,
+  aspect: requiredText,
+  values: z.array(requiredText).min(2).max(5),
+});
+
+export const keyTermSchema = z.object({
+  id,
+  term: requiredText,
+  definition: requiredText,
+  conceptId: id.nullable(),
+});
+
+export const summaryOutputSchema = z.object({
+  ...outputBase,
+  type: z.literal("summary"),
+  data: z.object({ text: requiredText }),
+});
+export const notesOutputSchema = z.object({
+  ...outputBase,
+  type: z.literal("notes"),
+  data: z.object({ items: z.array(noteSchema).min(1).max(30) }),
+});
+export const explanationOutputSchema = z.object({
+  ...outputBase,
+  type: z.literal("explanation"),
+  data: z.object({ text: requiredText }),
+});
+export const flashcardDeckOutputSchema = z.object({
+  ...outputBase,
+  type: z.literal("flashcards"),
+  data: z.object({ cards: z.array(flashcardSchema).min(1).max(30) }),
+});
+export const quizOutputSchema = z.object({
+  ...outputBase,
+  type: z.literal("quiz"),
+  data: z.object({ quizzes: quizCollectionSchema }),
+});
+export const timelineOutputSchema = z.object({
+  ...outputBase,
+  type: z.literal("timeline"),
+  data: z.object({ events: z.array(timelineEventSchema).min(2).max(30) }),
+});
+export const comparisonOutputSchema = z.object({
+  ...outputBase,
+  type: z.literal("comparison"),
+  data: z.object({
+    subjects: z.array(requiredText).min(2).max(5),
+    rows: z.array(comparisonRowSchema).min(1).max(20),
+  }),
+});
+export const keyTermsOutputSchema = z.object({
+  ...outputBase,
+  type: z.literal("keyTerms"),
+  data: z.object({ terms: z.array(keyTermSchema).min(1).max(40) }),
+});
+
+export const workspaceOutputSchema = z.discriminatedUnion("type", [
+  summaryOutputSchema,
+  notesOutputSchema,
+  explanationOutputSchema,
+  flashcardDeckOutputSchema,
+  quizOutputSchema,
+  timelineOutputSchema,
+  comparisonOutputSchema,
+  keyTermsOutputSchema,
+]);
+
+const generatedQuizOutputSchema = z.object({ title: requiredText, quizzes: quizCollectionSchema }).superRefine((output, context) => {
+  const total = Object.values(output.quizzes).reduce((sum, questions) => sum + questions.length, 0);
+  if (!total) context.addIssue({ code: "custom", path: ["quizzes"], message: "At least one quiz question is required" });
+  output.quizzes.multipleChoice.forEach((question, index) => {
+    if (!question.options.includes(question.correctAnswer)) {
+      context.addIssue({ code: "custom", path: ["quizzes", "multipleChoice", index, "correctAnswer"], message: "Answer must match one option" });
+    }
+  });
+});
+
+const generatedComparisonOutputSchema = z.object({
+  title: requiredText,
+  subjects: z.array(requiredText).min(2).max(5),
+  rows: z.array(comparisonRowSchema).min(1).max(20),
+}).superRefine((output, context) => {
+  output.rows.forEach((row, index) => {
+    if (row.values.length !== output.subjects.length) {
+      context.addIssue({ code: "custom", path: ["rows", index, "values"], message: "One value per subject is required" });
+    }
+  });
+});
+
+export const generatedOutputSchemas = {
+  summary: z.object({ title: requiredText, text: requiredText }),
+  notes: z.object({ title: requiredText, items: z.array(noteSchema).min(1).max(30) }),
+  explanation: z.object({ title: requiredText, text: requiredText }),
+  flashcards: z.object({ title: requiredText, cards: z.array(flashcardSchema).min(1).max(30) }),
+  quiz: generatedQuizOutputSchema,
+  timeline: z.object({ title: requiredText, events: z.array(timelineEventSchema).min(2).max(30) }),
+  comparison: generatedComparisonOutputSchema,
+  keyTerms: z.object({ title: requiredText, terms: z.array(keyTermSchema).min(1).max(40) }),
+} as const;
+
+export const outputKindSchema = z.enum([
+  "summary",
+  "notes",
+  "explanation",
+  "flashcards",
+  "quiz",
+  "timeline",
+  "comparison",
+  "keyTerms",
+]);
+
+export const workspacePromptSchema = z.object({
+  id,
+  text: requiredText,
+  createdAt: timestamp,
+  outputIds: z.array(id),
+});
+
+export const workspaceActivitySchema = z.object({
+  id,
+  type: z.enum(["workspaceCreated", "sourceAdded", "outputCreated", "quizCompleted"]),
+  title: requiredText,
+  createdAt: timestamp,
+  outputId: id.nullable(),
 });
 
 export const flashcardRatingSchema = z.enum(["again", "hard", "good", "easy"]);
-export const workspaceModeSchema = z.enum(["overview", "notes", "flashcards", "quiz", "learn"]);
-
+export const workspaceSectionSchema = z.enum(["overview", "sources", "outputs", "progress"]);
 export const quizAttemptSchema = z.object({
   id,
+  outputId: id.nullable(),
   type: z.enum(["multipleChoice", "trueFalse", "shortAnswer", "fillBlank"]),
   score: z.number().int().nonnegative(),
   total: z.number().int().positive(),
   incorrectIds: z.array(id),
-  completedAt: z.string().datetime(),
+  completedAt: timestamp,
 });
 
 export const workspaceProgressSchema = z.object({
   flashcardRatings: z.record(z.string(), flashcardRatingSchema),
   conceptMastery: z.record(z.string(), z.number().min(0).max(100)),
   quizAttempts: z.array(quizAttemptSchema),
-  lastMode: workspaceModeSchema,
-  noteEnhancements: z.record(z.string(), z.object({
-    simplerExplanation: z.string().nullable(),
-  })).default({}),
+  lastSection: workspaceSectionSchema,
+  activeOutputId: id.nullable(),
 });
 
-export const storedWorkspaceSchema = z.object({
-  workspace: studyWorkspaceSchema,
+export const workspaceSchema = z.object({
+  version: z.literal(2),
+  id,
+  title: requiredText,
+  sourceLanguage: requiredText,
+  createdAt: timestamp,
+  updatedAt: timestamp,
+  sources: z.array(workspaceSourceSchema).min(1),
+  prompts: z.array(workspacePromptSchema),
+  concepts: z.array(conceptSchema).min(1).max(50),
+  outputs: z.array(workspaceOutputSchema),
+  activity: z.array(workspaceActivitySchema),
   progress: workspaceProgressSchema,
 });
 
-export const workspaceActionSchema = z.enum(["explainSimpler", "makeFlashcard", "testMe"]);
-export const workspaceActionResultSchema = z.object({
-  action: workspaceActionSchema,
-  explanation: z.string().nullable(),
-  flashcard: flashcardSchema.nullable(),
-  question: multipleChoiceQuestionSchema.nullable(),
+export const workspaceStorageSchema = z.object({
+  version: z.literal(2),
+  workspaces: z.array(workspaceSchema),
 });
 
-export type StudyModule = z.infer<typeof studyModuleSchema>;
+export type Difficulty = z.infer<typeof difficultySchema>;
 export type Concept = z.infer<typeof conceptSchema>;
 export type Note = z.infer<typeof noteSchema>;
 export type Flashcard = z.infer<typeof flashcardSchema>;
-export type MultipleChoiceQuestion = z.infer<typeof multipleChoiceQuestionSchema>;
-export type TrueFalseQuestion = z.infer<typeof trueFalseQuestionSchema>;
-export type ShortAnswerQuestion = z.infer<typeof shortAnswerQuestionSchema>;
-export type FillBlankQuestion = z.infer<typeof fillBlankQuestionSchema>;
-export type GeneratedWorkspace = z.infer<typeof generatedWorkspaceSchema>;
-export type StudyWorkspace = z.infer<typeof studyWorkspaceSchema>;
 export type FlashcardRating = z.infer<typeof flashcardRatingSchema>;
-export type WorkspaceMode = z.infer<typeof workspaceModeSchema>;
-export type WorkspaceProgress = z.infer<typeof workspaceProgressSchema>;
+export type MultipleChoiceQuestion = z.infer<typeof multipleChoiceQuestionSchema>;
+export type QuizCollection = z.infer<typeof quizCollectionSchema>;
 export type QuizAttempt = z.infer<typeof quizAttemptSchema>;
-export type StoredWorkspace = z.infer<typeof storedWorkspaceSchema>;
-export type WorkspaceAction = z.infer<typeof workspaceActionSchema>;
-export type WorkspaceActionResult = z.infer<typeof workspaceActionResultSchema>;
+export type GeneratedWorkspace = z.infer<typeof generatedWorkspaceSchema>;
+export type WorkspaceSource = z.infer<typeof workspaceSourceSchema>;
+export type WorkspaceOutput = z.infer<typeof workspaceOutputSchema>;
+export type OutputKind = z.infer<typeof outputKindSchema>;
+export type WorkspaceActivity = z.infer<typeof workspaceActivitySchema>;
+export type WorkspaceProgress = z.infer<typeof workspaceProgressSchema>;
+export type WorkspaceSection = z.infer<typeof workspaceSectionSchema>;
+export type Workspace = z.infer<typeof workspaceSchema>;
