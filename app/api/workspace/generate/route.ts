@@ -1,8 +1,7 @@
-import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
-import { createOpenAIService } from "@/lib/openai/client";
-import { apiError, openAIConfigurationError, openAIErrorResponse } from "@/lib/openai/errors";
+import { apiError, workersAIErrorResponse } from "@/lib/cloudflare-ai/errors";
+import { generateStructured } from "@/lib/cloudflare-ai/structured-output";
 import { generatedWorkspaceSchema, type StudyWorkspace } from "@/lib/workspace/schema";
 
 const MAX_SOURCE_LENGTH = 50_000;
@@ -31,18 +30,15 @@ export async function POST(request: Request) {
     return apiError(parsed.error.issues[0]?.message ?? "Ungültige Anfrage.", "INVALID_INPUT", 400);
   }
 
-  const service = await createOpenAIService();
-  if (!service) return openAIConfigurationError();
-
   const originalPrompt = parsed.data.userPrompt;
   const effectivePrompt = originalPrompt ||
     "Erstelle eine kurze Zusammenfassung, wichtige Stichpunkte, Karteikarten und ein Multiple-Choice-Quiz.";
 
   try {
-    const response = await service.client.responses.parse({
-      model: service.model,
-      max_output_tokens: 12_000,
-      store: false,
+    const generated = await generateStructured({
+      schema: generatedWorkspaceSchema,
+      schemaName: "lemon_workspace",
+      maxOutputTokens: 12_000,
       instructions: [
         "Du baust ein Lern-Workspace aus einer Quelle und einem separaten Nutzerauftrag.",
         "Analysiere zuerst den Nutzerauftrag: erkenne gewünschte Module, Schwierigkeit, Detailgrad, Mengen, Zielgruppe, Prüfungskontext, Reihenfolge und Vokabelfokus.",
@@ -57,28 +53,31 @@ export async function POST(request: Request) {
         "Nutze kurze eindeutige IDs wie concept-1, note-1 oder mc-1 und verknüpfe conceptId nur mit vorhandenen Konzept-IDs.",
       ].join(" "),
       input: [
-        { role: "user", content: `NUTZERAUFTRAG\n${effectivePrompt}` },
-        { role: "user", content: `QUELLENMATERIAL\n${parsed.data.sourceText}` },
-      ],
-      text: { format: zodTextFormat(generatedWorkspaceSchema, "lemon_workspace") },
+        `NUTZERAUFTRAG\n${effectivePrompt}`,
+        `QUELLENMATERIAL\n${parsed.data.sourceText}`,
+      ].join("\n\n"),
     });
 
-    if (!response.output_parsed || !hasValidAnswers(response.output_parsed)) {
-      return apiError("Das Modell hat kein verlässlich prüfbares Lernset zurückgegeben.", "INVALID_OUTPUT", 502);
+    if (!hasValidAnswers(generated)) {
+      return apiError(
+        "Das Modell hat kein verlässlich prüfbares Lernset zurückgegeben.",
+        "INVALID_AI_OUTPUT",
+        502,
+      );
     }
 
     const now = new Date().toISOString();
     const workspace: StudyWorkspace = {
-      ...response.output_parsed,
+      ...generated,
       id: crypto.randomUUID(),
       createdAt: now,
       updatedAt: now,
       sourceText: parsed.data.sourceText,
-      request: { ...response.output_parsed.request, originalPrompt },
+      request: { ...generated.request, originalPrompt },
     };
 
     return Response.json(workspace);
   } catch (error) {
-    return openAIErrorResponse(error);
+    return workersAIErrorResponse(error);
   }
 }

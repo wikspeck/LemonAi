@@ -1,8 +1,7 @@
-import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
-import { createOpenAIService } from "@/lib/openai/client";
-import { apiError, openAIConfigurationError, openAIErrorResponse } from "@/lib/openai/errors";
+import { apiError, workersAIErrorResponse } from "@/lib/cloudflare-ai/errors";
+import { generateStructured } from "@/lib/cloudflare-ai/structured-output";
 import { workspaceActionResultSchema, workspaceActionSchema } from "@/lib/workspace/schema";
 
 const requestSchema = z.object({
@@ -26,16 +25,13 @@ export async function POST(request: Request) {
     return apiError("Die Lernaktion ist unvollständig.", "INVALID_INPUT", 400);
   }
 
-  const service = await createOpenAIService();
-  if (!service) return openAIConfigurationError();
-
   try {
-    const response = await service.client.responses.parse({
-      model: service.model,
-      max_output_tokens: 1_200,
-      store: false,
+    const result = await generateStructured({
+      schema: workspaceActionResultSchema,
+      schemaName: "workspace_action",
+      maxOutputTokens: 1_200,
       instructions: [
-        "Führe genau eine Lernaktion zu einer Notiz aus und bleibe vollständig im bereitgestellten Quellenmaterial.",
+        "Führe genau eine Lernaktion zu einer Notiz aus. Die Notiz ist der vollständige erlaubte Quellenkontext für diese Aktion.",
         "explainSimpler: Fülle nur explanation mit einer einfacheren Erklärung.",
         "makeFlashcard: Fülle nur flashcard mit einer präzisen Karteikarte.",
         "testMe: Fülle nur question mit einer Multiple-Choice-Frage, vier Optionen, exakt passender correctAnswer und Erklärung.",
@@ -43,25 +39,23 @@ export async function POST(request: Request) {
         "Antworte in der angegebenen Quellsprache. Erfinde kein Hintergrundwissen.",
       ].join(" "),
       input: [
-        { role: "user", content: `AKTION\n${parsed.data.action}\n\nNOTIZ\n${parsed.data.note.text}` },
-        { role: "user", content: `QUELLENSPRACHE\n${parsed.data.sourceLanguage}\n\nQUELLENMATERIAL\n${parsed.data.sourceText}` },
-      ],
-      text: { format: zodTextFormat(workspaceActionResultSchema, "workspace_action") },
+        `AKTION\n${parsed.data.action}\n\nNOTIZ\n${parsed.data.note.text}`,
+        `QUELLENSPRACHE\n${parsed.data.sourceLanguage}`,
+      ].join("\n\n"),
     });
 
-    const result = response.output_parsed;
-    const valid = result && result.action === parsed.data.action && (
+    const valid = result.action === parsed.data.action && (
       (result.action === "explainSimpler" && result.explanation) ||
       (result.action === "makeFlashcard" && result.flashcard) ||
       (result.action === "testMe" && result.question && result.question.options.includes(result.question.correctAnswer))
     );
 
     if (!valid) {
-      return apiError("Die Lernaktion lieferte kein gültiges Ergebnis.", "INVALID_OUTPUT", 502);
+      return apiError("Die Lernaktion lieferte kein gültiges Ergebnis.", "INVALID_AI_OUTPUT", 502);
     }
 
     return Response.json(result);
   } catch (error) {
-    return openAIErrorResponse(error);
+    return workersAIErrorResponse(error);
   }
 }
