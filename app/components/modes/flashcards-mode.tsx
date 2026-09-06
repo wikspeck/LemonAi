@@ -2,22 +2,23 @@
 
 import { useEffect, useState } from "react";
 
-import type { Flashcard } from "@/lib/learning-material";
+import type { Flashcard, FlashcardRating } from "@/lib/workspace/schema";
 
 type FlashcardsModeProps = {
   flashcards: Flashcard[];
-  onRate: (concept: string, rating: "easy" | "hard") => void;
+  ratings: Record<string, FlashcardRating>;
+  onRate: (card: Flashcard, rating: FlashcardRating) => void;
 };
 
 function shuffled<T>(items: T[]) {
   return [...items].sort(() => Math.random() - 0.5);
 }
 
-export function FlashcardsMode({ flashcards, onRate }: FlashcardsModeProps) {
+export function FlashcardsMode({ flashcards, ratings, onRate }: FlashcardsModeProps) {
   const [deck, setDeck] = useState(flashcards);
   const [index, setIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [ratings, setRatings] = useState<Record<string, "easy" | "hard">>({});
+  const [weakOnly, setWeakOnly] = useState(false);
   const card = deck[index];
 
   useEffect(() => {
@@ -47,14 +48,28 @@ export function FlashcardsMode({ flashcards, onRate }: FlashcardsModeProps) {
     setIsFlipped(false);
   }
 
-  function rate(rating: "easy" | "hard") {
-    setRatings((current) => ({ ...current, [card.id]: rating }));
-    onRate(card.concept, rating);
+  function rate(rating: FlashcardRating) {
+    onRate(card, rating);
+    if (rating === "again" || rating === "hard") {
+      setDeck((current) => [...current, card]);
+    }
     move(1);
   }
 
   function shuffleDeck() {
-    setDeck((current) => shuffled(current));
+    const source = weakOnly
+      ? flashcards.filter((item) => ["again", "hard"].includes(ratings[item.id] ?? ""))
+      : flashcards;
+    setDeck(shuffled(source.length ? source : flashcards));
+    setIndex(0);
+    setIsFlipped(false);
+  }
+
+  function toggleWeakCards() {
+    const next = !weakOnly;
+    const weakCards = flashcards.filter((item) => ["again", "hard"].includes(ratings[item.id] ?? ""));
+    setWeakOnly(next);
+    setDeck(next && weakCards.length ? weakCards : flashcards);
     setIndex(0);
     setIsFlipped(false);
   }
@@ -66,13 +81,16 @@ export function FlashcardsMode({ flashcards, onRate }: FlashcardsModeProps) {
           <p className="eyebrow">Aktive Wiederholung</p>
           <h2>Karteikarten</h2>
         </div>
-        <button className="outline-button" onClick={shuffleDeck}>Mischen</button>
+        <div className="flashcard-tools">
+          <button className={`outline-button ${weakOnly ? "active" : ""}`} onClick={toggleWeakCards}>Schwache Karten</button>
+          <button className="outline-button" onClick={shuffleDeck}>Mischen</button>
+        </div>
       </div>
 
       <div className="flashcard-progress">
         <span>{index + 1} / {deck.length}</span>
         <i><b style={{ width: `${((index + 1) / deck.length) * 100}%` }} /></i>
-        <span>{Object.values(ratings).filter((rating) => rating === "hard").length} schwer</span>
+        <span>{Object.values(ratings).filter((rating) => rating === "again" || rating === "hard").length} schwach</span>
       </div>
 
       <button
@@ -81,7 +99,7 @@ export function FlashcardsMode({ flashcards, onRate }: FlashcardsModeProps) {
         aria-label={isFlipped ? "Antwort ausblenden" : "Antwort aufdecken"}
         aria-pressed={isFlipped}
       >
-        <span className="card-concept">{card.concept}</span>
+        <span className="card-concept">{card.conceptId ? "Konzeptkarte" : "Lernkarte"}</span>
         <span className="card-side">{isFlipped ? "Antwort" : "Frage"}</span>
         <strong>{isFlipped ? card.back : card.front}</strong>
         <span className="reveal-hint">{isFlipped ? "Zum Zurückdrehen klicken" : "Klicken oder Leertaste zum Aufdecken"}</span>
@@ -90,8 +108,10 @@ export function FlashcardsMode({ flashcards, onRate }: FlashcardsModeProps) {
       <div className="flashcard-controls">
         <button className="icon-button" onClick={() => move(-1)} aria-label="Vorherige Karte">←</button>
         <div>
-          <button className="rating-button hard" onClick={() => rate("hard")}>Noch schwer</button>
-          <button className="rating-button easy" onClick={() => rate("easy")}>Sitzt</button>
+          <button className="rating-button again" onClick={() => rate("again")}>Nochmal</button>
+          <button className="rating-button hard" onClick={() => rate("hard")}>Schwer</button>
+          <button className="rating-button good" onClick={() => rate("good")}>Gut</button>
+          <button className="rating-button easy" onClick={() => rate("easy")}>Einfach</button>
         </div>
         <button className="icon-button" onClick={() => move(1)} aria-label="Nächste Karte">→</button>
       </div>

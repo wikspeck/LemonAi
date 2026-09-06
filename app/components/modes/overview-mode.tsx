@@ -22,20 +22,20 @@ export function OverviewMode({ workspace, progress, onNavigate }: OverviewModePr
       unit: "Aufgaben",
     },
     { id: "learn" as const, label: "Lernmodus", value: averageMastery, unit: "% Mastery" },
-  ];
+  ].filter((mode) => mode.value > 0 || mode.id === "notes");
 
   return (
     <div className="mode-stack">
       <section className="summary-block">
         <p className="eyebrow">Kurzfassung</p>
-        <p>{studySet.summary}</p>
+        <p>{workspace.summary || workspace.explanation || "Dieser Workspace konzentriert sich auf aktive Lernmodule."}</p>
       </section>
 
       <section>
         <div className="section-heading">
           <div>
             <p className="eyebrow">Arbeitsfläche</p>
-            <h2>Dein Material, in fünf Perspektiven.</h2>
+            <h2>Deine angeforderten Lernmodule.</h2>
           </div>
           <span className="muted-copy">Lokal in dieser Sitzung</span>
         </div>

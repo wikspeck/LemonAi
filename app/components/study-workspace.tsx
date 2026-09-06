@@ -1,116 +1,25 @@
 "use client";
-
+import Image from "next/image";
 import { useState } from "react";
-
 import { FlashcardsMode } from "@/app/components/modes/flashcards-mode";
 import { LearnMode } from "@/app/components/modes/learn-mode";
 import { NotesMode } from "@/app/components/modes/notes-mode";
 import { OverviewMode } from "@/app/components/modes/overview-mode";
 import { QuizMode } from "@/app/components/modes/quiz-mode";
-import type { ConceptMastery, StudySet } from "@/lib/learning-material";
+import type { Flashcard, FlashcardRating, Note, QuizAttempt, StoredWorkspace, WorkspaceActionResult, WorkspaceMode } from "@/lib/workspace/schema";
 
-export type WorkspaceTab = "overview" | "notes" | "flashcards" | "quiz" | "learn";
-
-const tabs: Array<{ id: WorkspaceTab; label: string; key: string }> = [
-  { id: "overview", label: "Übersicht", key: "1" },
-  { id: "notes", label: "Notizen", key: "2" },
-  { id: "flashcards", label: "Karteikarten", key: "3" },
-  { id: "quiz", label: "Quiz", key: "4" },
-  { id: "learn", label: "Lernen", key: "5" },
-];
-
-type StudyWorkspaceProps = {
-  studySet: StudySet;
-  activeTab: WorkspaceTab;
-  onTabChange: (tab: WorkspaceTab) => void;
-};
-
-function createInitialMastery(studySet: StudySet): ConceptMastery {
-  const concepts = [
-    ...studySet.flashcards.map((card) => card.concept),
-    ...studySet.quizQuestions.map((question) => question.concept),
-    ...studySet.trueFalseQuestions.map((question) => question.concept),
-    ...studySet.shortAnswerQuestions.map((question) => question.concept),
-  ];
-  return Object.fromEntries([...new Set(concepts)].map((concept) => [concept, 40]));
-}
-
-export function StudyWorkspace({ studySet, activeTab, onTabChange }: StudyWorkspaceProps) {
-  const [mastery, setMastery] = useState<ConceptMastery>(() => createInitialMastery(studySet));
-
-  function adjustMastery(concept: string, delta: number) {
-    setMastery((current) => ({
-      ...current,
-      [concept]: Math.max(0, Math.min(100, (current[concept] ?? 40) + delta)),
-    }));
-  }
-
-  return (
-    <div className="workspace-shell">
-      <aside className="workspace-rail">
-        <div className="rail-heading">
-          <span>Aktives Set</span>
-          <strong>{studySet.title}</strong>
-        </div>
-        <nav aria-label="Lernbereiche">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              className={activeTab === tab.id ? "active" : ""}
-              onClick={() => onTabChange(tab.id)}
-            >
-              <span>{tab.label}</span><kbd>{tab.key}</kbd>
-            </button>
-          ))}
-        </nav>
-        <div className="rail-footer">
-          <i />
-          <div><strong>Sitzung aktiv</strong><span>Fortschritt lokal</span></div>
-        </div>
-      </aside>
-
-      <main className="workspace-main">
-        <header className="workspace-titlebar">
-          <div>
-            <p className="eyebrow">Lernset</p>
-            <h1>{studySet.title}</h1>
-          </div>
-          <div className="workspace-stats">
-            <span><b>{studySet.flashcards.length}</b> Karten</span>
-            <span><b>{studySet.quizQuestions.length + studySet.trueFalseQuestions.length + studySet.shortAnswerQuestions.length}</b> Fragen</span>
-          </div>
-        </header>
-
-        <nav className="mobile-tabs" aria-label="Lernbereiche mobil">
-          {tabs.map((tab) => (
-            <button key={tab.id} className={activeTab === tab.id ? "active" : ""} onClick={() => onTabChange(tab.id)}>
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-
-        <div className="workspace-content">
-          {activeTab === "overview" ? <OverviewMode studySet={studySet} mastery={mastery} onNavigate={onTabChange} /> : null}
-          {activeTab === "notes" ? <NotesMode studySet={studySet} /> : null}
-          {activeTab === "flashcards" ? (
-            <FlashcardsMode
-              flashcards={studySet.flashcards}
-              onRate={(concept, rating) => adjustMastery(concept, rating === "easy" ? 8 : -4)}
-            />
-          ) : null}
-          {activeTab === "quiz" ? (
-            <QuizMode
-              multipleChoice={studySet.quizQuestions}
-              trueFalse={studySet.trueFalseQuestions}
-              shortAnswer={studySet.shortAnswerQuestions}
-              onAnswer={(concept, correct) => adjustMastery(concept, correct ? 7 : -5)}
-            />
-          ) : null}
-          {activeTab === "learn" ? (
-            <LearnMode questions={studySet.quizQuestions} mastery={mastery} onMasteryChange={adjustMastery} />
-          ) : null}
-        </div>
-      </main>
-    </div>
-  );
+const labels: Record<WorkspaceMode, string> = { overview: "Übersicht", notes: "Notizen", flashcards: "Karteikarten", quiz: "Quiz", learn: "Lernen" };
+type Props = { stored: StoredWorkspace; recent: StoredWorkspace[]; focusMode: boolean; onUpdate: (item: StoredWorkspace) => void; onOpen: (id: string) => void; onDelete: (id: string) => void; onNew: () => void };
+export function StudyWorkspace({ stored, recent, focusMode, onUpdate, onOpen, onDelete, onNew }: Props) {
+  const { workspace, progress } = stored; const [name, setName] = useState(workspace.title);
+  const quizCount = Object.values(workspace.quizzes).reduce((sum, list) => sum + list.length, 0);
+  const available: WorkspaceMode[] = ["overview", ...(workspace.bulletPoints.length || workspace.summary || workspace.explanation ? ["notes" as const] : []), ...(workspace.flashcards.length ? ["flashcards" as const] : []), ...(quizCount ? ["quiz" as const] : []), ...(workspace.quizzes.multipleChoice.length ? ["learn" as const] : [])];
+  const activeTab = available.includes(progress.lastMode) ? progress.lastMode : "overview";
+  const patch = (next: Partial<StoredWorkspace>) => onUpdate({ workspace: next.workspace ?? workspace, progress: next.progress ?? progress });
+  const setMode = (mode: WorkspaceMode) => patch({ progress: { ...progress, lastMode: mode } });
+  function rename() { const title = name.trim(); if (title && title !== workspace.title) patch({ workspace: { ...workspace, title, updatedAt: new Date().toISOString() } }); else setName(workspace.title); }
+  function mastery(conceptId: string | null, delta: number) { if (!conceptId) return; patch({ progress: { ...progress, conceptMastery: { ...progress.conceptMastery, [conceptId]: Math.max(0, Math.min(100, (progress.conceptMastery[conceptId] ?? 35) + delta)) } } }); }
+  function rate(card: Flashcard, rating: FlashcardRating) { const delta = rating === "easy" ? 10 : rating === "good" ? 6 : rating === "hard" ? -2 : -7; patch({ progress: { ...progress, flashcardRatings: { ...progress.flashcardRatings, [card.id]: rating }, conceptMastery: card.conceptId ? { ...progress.conceptMastery, [card.conceptId]: Math.max(0, Math.min(100, (progress.conceptMastery[card.conceptId] ?? 35) + delta)) } : progress.conceptMastery } }); }
+  function action(note: Note, result: WorkspaceActionResult) { if (result.explanation) patch({ progress: { ...progress, noteEnhancements: { ...progress.noteEnhancements, [note.id]: { simplerExplanation: result.explanation } } } }); if (result.flashcard) patch({ workspace: { ...workspace, flashcards: [...workspace.flashcards, { ...result.flashcard, id: crypto.randomUUID() }], updatedAt: new Date().toISOString() } }); if (result.question) patch({ workspace: { ...workspace, quizzes: { ...workspace.quizzes, multipleChoice: [...workspace.quizzes.multipleChoice, { ...result.question, id: crypto.randomUUID() }] }, updatedAt: new Date().toISOString() } }); }
+  return <div className="workspace-shell">{!focusMode ? <aside className="workspace-rail"><div className="rail-logo"><Image src="/assets/lemonlogo.svg" alt="Lemon AI" width={34} height={34} /></div><div className="rail-heading"><span>Aktiver Workspace</span><strong>{workspace.title}</strong></div><nav>{available.map((tab, i) => <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setMode(tab)}><span>{labels[tab]}</span><kbd>{i + 1}</kbd></button>)}</nav><div className="recent-list"><span>Zuletzt verwendet</span>{recent.slice(0, 5).map((item) => <div key={item.workspace.id}><button className={item.workspace.id === workspace.id ? "active" : ""} onClick={() => onOpen(item.workspace.id)}>{item.workspace.title}</button><button aria-label={`${item.workspace.title} löschen`} onClick={() => onDelete(item.workspace.id)}>×</button></div>)}</div><button className="rail-new" onClick={onNew}>＋ Neuer Workspace</button></aside> : null}<main className="workspace-main"><header className="workspace-titlebar"><div><p className="eyebrow">{workspace.sourceLanguage} · {workspace.request.difficulty}</p><input value={name} onChange={(e) => setName(e.target.value)} onBlur={rename} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} aria-label="Workspace umbenennen" /></div><div className="workspace-stats"><span><b>{workspace.flashcards.length}</b> Karten</span><span><b>{quizCount}</b> Fragen</span></div></header>{!focusMode ? <nav className="mobile-tabs">{available.map((tab) => <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setMode(tab)}>{labels[tab]}</button>)}</nav> : null}<div className="workspace-content">{activeTab === "overview" ? <OverviewMode workspace={workspace} progress={progress} onNavigate={setMode} /> : null}{activeTab === "notes" ? <NotesMode workspace={workspace} explanations={progress.noteEnhancements} onApplyAction={action} /> : null}{activeTab === "flashcards" ? <FlashcardsMode flashcards={workspace.flashcards} ratings={progress.flashcardRatings} onRate={rate} /> : null}{activeTab === "quiz" ? <QuizMode quizzes={workspace.quizzes} onAnswer={mastery} onComplete={(attempt: QuizAttempt) => patch({ progress: { ...progress, quizAttempts: [...progress.quizAttempts, attempt] } })} /> : null}{activeTab === "learn" ? <LearnMode workspace={workspace} mastery={progress.conceptMastery} onMasteryChange={mastery} /> : null}</div></main></div>;
 }

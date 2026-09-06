@@ -155,6 +155,7 @@ export type StudyWorkspace = z.infer<typeof studyWorkspaceSchema>;
 export type FlashcardRating = z.infer<typeof flashcardRatingSchema>;
 export type WorkspaceMode = z.infer<typeof workspaceModeSchema>;
 export type WorkspaceProgress = z.infer<typeof workspaceProgressSchema>;
+export type QuizAttempt = z.infer<typeof quizAttemptSchema>;
 export type StoredWorkspace = z.infer<typeof storedWorkspaceSchema>;
 export type WorkspaceAction = z.infer<typeof workspaceActionSchema>;
 export type WorkspaceActionResult = z.infer<typeof workspaceActionResultSchema>;

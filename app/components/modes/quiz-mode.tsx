@@ -1,191 +1,24 @@
 "use client";
-
-import { useMemo, useState, type FormEvent } from "react";
-
-import type {
-  QuizQuestion,
-  ShortAnswerQuestion,
-  TrueFalseQuestion,
-} from "@/lib/learning-material";
-
-type QuizModeProps = {
-  multipleChoice: QuizQuestion[];
-  trueFalse: TrueFalseQuestion[];
-  shortAnswer: ShortAnswerQuestion[];
-  onAnswer: (concept: string, correct: boolean) => void;
-};
-
-type SessionQuestion =
-  | { type: "choice"; id: string; concept: string; prompt: string; options: string[]; correct: string; explanation: string }
-  | { type: "boolean"; id: string; concept: string; prompt: string; correct: string; explanation: string }
-  | { type: "short"; id: string; concept: string; prompt: string; accepted: string[]; expected: string; explanation: string };
-
-function normalize(value: string) {
-  return value.toLocaleLowerCase().trim().replace(/[^\p{L}\p{N}]+/gu, " ");
-}
-
-export function QuizMode({ multipleChoice, trueFalse, shortAnswer, onAnswer }: QuizModeProps) {
-  const questions = useMemo<SessionQuestion[]>(() => [
-    ...multipleChoice.map((question) => ({
-      type: "choice" as const,
-      id: question.id,
-      concept: question.concept,
-      prompt: question.question,
-      options: question.options,
-      correct: question.options[question.correctOptionIndex],
-      explanation: question.explanation,
-    })),
-    ...trueFalse.map((question) => ({
-      type: "boolean" as const,
-      id: question.id,
-      concept: question.concept,
-      prompt: question.statement,
-      correct: String(question.answer),
-      explanation: question.explanation,
-    })),
-    ...shortAnswer.map((question) => ({
-      type: "short" as const,
-      id: question.id,
-      concept: question.concept,
-      prompt: question.question,
-      accepted: question.acceptedAnswers,
-      expected: question.expectedAnswer,
-      explanation: question.explanation,
-    })),
-  ], [multipleChoice, trueFalse, shortAnswer]);
-
-  const [index, setIndex] = useState(0);
-  const [selection, setSelection] = useState("");
-  const [shortResponse, setShortResponse] = useState("");
-  const [answered, setAnswered] = useState(false);
-  const [wasCorrect, setWasCorrect] = useState(false);
-  const [score, setScore] = useState(0);
-  const [complete, setComplete] = useState(false);
-  const question = questions[index];
-
-  function commitAnswer(correct: boolean, value: string) {
-    if (answered) return;
-    setSelection(value);
-    setWasCorrect(correct);
-    setAnswered(true);
-    if (correct) setScore((current) => current + 1);
-    onAnswer(question.concept, correct);
-  }
-
-  function submitShortAnswer(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (question.type !== "short" || !shortResponse.trim()) return;
-    const answer = normalize(shortResponse);
-    const correct = question.accepted.some((accepted) => {
-      const normalizedAccepted = normalize(accepted);
-      return answer === normalizedAccepted || answer.includes(normalizedAccepted);
-    });
-    commitAnswer(correct, shortResponse);
-  }
-
-  function nextQuestion() {
-    if (index === questions.length - 1) {
-      setComplete(true);
-      return;
-    }
-    setIndex((current) => current + 1);
-    setSelection("");
-    setShortResponse("");
-    setAnswered(false);
-  }
-
-  function restart() {
-    setIndex(0);
-    setSelection("");
-    setShortResponse("");
-    setAnswered(false);
-    setWasCorrect(false);
-    setScore(0);
-    setComplete(false);
-  }
-
-  if (complete) {
-    const percentage = Math.round((score / questions.length) * 100);
-    return (
-      <div className="quiz-complete">
-        <p className="eyebrow">Durchlauf beendet</p>
-        <strong>{percentage}<span>%</span></strong>
-        <h2>{score} von {questions.length} richtig</h2>
-        <p>{percentage >= 80 ? "Sehr sicher. Zeit für den adaptiven Lernmodus." : "Guter Anfang. Schwierige Konzepte werden im Lernmodus wiederholt."}</p>
-        <button className="primary-button" onClick={restart}>Quiz neu starten</button>
-      </div>
-    );
-  }
-
-  const options = question.type === "choice"
-    ? question.options
-    : question.type === "boolean"
-      ? ["true", "false"]
-      : [];
-
-  return (
-    <div className="quiz-layout">
-      <header className="quiz-header">
-        <div>
-          <p className="eyebrow">Gemischter Test</p>
-          <h2>Prüfe dein Verständnis.</h2>
-        </div>
-        <div className="score-chip"><span>{score}</span> Punkte</div>
-      </header>
-
-      <div className="quiz-progress">
-        <span>Aufgabe {index + 1} von {questions.length}</span>
-        <i><b style={{ width: `${((index + 1) / questions.length) * 100}%` }} /></i>
-        <span>{question.type === "choice" ? "Multiple Choice" : question.type === "boolean" ? "Wahr / Falsch" : "Kurzantwort"}</span>
-      </div>
-
-      <section className="question-panel">
-        <span className="question-concept">{question.concept}</span>
-        <h3>{question.prompt}</h3>
-
-        {question.type !== "short" ? (
-          <div className="answer-grid">
-            {options.map((option, optionIndex) => {
-              const label = question.type === "boolean" ? (option === "true" ? "Richtig" : "Falsch") : option;
-              const correct = option === question.correct;
-              const selected = option === selection;
-              const state = answered ? (correct ? "correct" : selected ? "incorrect" : "") : "";
-              return (
-                <button
-                  key={option}
-                  className={state}
-                  onClick={() => commitAnswer(correct, option)}
-                  disabled={answered}
-                >
-                  <span>{String.fromCharCode(65 + optionIndex)}</span>{label}
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <form className="short-answer-form" onSubmit={submitShortAnswer}>
-            <textarea
-              value={shortResponse}
-              onChange={(event) => setShortResponse(event.target.value)}
-              placeholder="Formuliere deine Antwort in eigenen Worten …"
-              disabled={answered}
-              rows={4}
-            />
-            {!answered ? <button disabled={!shortResponse.trim()}>Antwort prüfen</button> : null}
-          </form>
-        )}
-
-        {answered ? (
-          <div className={`answer-feedback ${wasCorrect ? "correct" : "incorrect"}`}>
-            <div>
-              <strong>{wasCorrect ? "Richtig" : "Noch nicht ganz"}</strong>
-              {question.type === "short" && !wasCorrect ? <span>Musterantwort: {question.expected}</span> : null}
-              <p>{question.explanation}</p>
-            </div>
-            <button onClick={nextQuestion}>{index === questions.length - 1 ? "Ergebnis" : "Weiter"} →</button>
-          </div>
-        ) : null}
-      </section>
-    </div>
-  );
+import { useMemo, useState } from "react";
+import type { QuizAttempt, StudyWorkspace } from "@/lib/workspace/schema";
+type Kind = keyof StudyWorkspace["quizzes"];
+type Item = { id: string; prompt: string; answers: string[]; correct: string; accepted: string[]; explanation: string; conceptId: string | null };
+const titles: Record<Kind, string> = { multipleChoice: "Multiple Choice", trueFalse: "Wahr / Falsch", shortAnswer: "Kurzantwort", fillBlank: "Lückentext" };
+const normalize = (value: string) => value.toLocaleLowerCase().trim().replace(/[^\p{L}\p{N}]+/gu, " ");
+export function QuizMode({ quizzes, onAnswer, onComplete }: { quizzes: StudyWorkspace["quizzes"]; onAnswer: (id: string | null, delta: number) => void; onComplete: (attempt: QuizAttempt) => void }) {
+  const available = (Object.keys(quizzes) as Kind[]).filter((kind) => quizzes[kind].length);
+  const [kind, setKind] = useState<Kind>(available[0]); const [index, setIndex] = useState(0); const [value, setValue] = useState(""); const [answered, setAnswered] = useState(false); const [correct, setCorrect] = useState(false); const [score, setScore] = useState(0); const [mistakes, setMistakes] = useState<string[]>([]); const [complete, setComplete] = useState(false); const [reviewIds, setReviewIds] = useState<string[] | null>(null);
+  const items = useMemo<Item[]>(() => {
+    if (kind === "multipleChoice") return quizzes.multipleChoice.map((q) => ({ id:q.id,prompt:q.question,answers:q.options,correct:q.correctAnswer,accepted:[q.correctAnswer],explanation:q.explanation,conceptId:q.conceptId }));
+    if (kind === "trueFalse") return quizzes.trueFalse.map((q) => ({ id:q.id,prompt:q.statement,answers:["Richtig","Falsch"],correct:q.correctAnswer ? "Richtig" : "Falsch",accepted:[q.correctAnswer ? "Richtig" : "Falsch"],explanation:q.explanation,conceptId:q.conceptId }));
+    if (kind === "shortAnswer") return quizzes.shortAnswer.map((q) => ({ id:q.id,prompt:q.question,answers:[],correct:q.expectedAnswer,accepted:q.acceptedAnswers,explanation:q.explanation,conceptId:q.conceptId }));
+    return quizzes.fillBlank.map((q) => ({ id:q.id,prompt:q.sentence,answers:[],correct:q.answer,accepted:q.acceptedAnswers,explanation:q.explanation,conceptId:q.conceptId }));
+  }, [kind, quizzes]);
+  const session = reviewIds ? items.filter((item) => reviewIds.includes(item.id)) : items; const question = session[index];
+  function choose(next: Kind) { setKind(next); reset(); }
+  function submit() { if (!value.trim() || answered) return; const answer = normalize(value); const ok = question.accepted.some((candidate) => { const expected = normalize(candidate); return answer === expected || (answer.length > 8 && answer.includes(expected)); }); setCorrect(ok); setAnswered(true); if (ok) setScore((x) => x + 1); else setMistakes((x) => [...x, question.id]); onAnswer(question.conceptId, ok ? 7 : -6); }
+  function next() { if (index + 1 < session.length) { setIndex((x) => x + 1); setValue(""); setAnswered(false); } else { setComplete(true); onComplete({ id: crypto.randomUUID(), type: kind, score, total: session.length, incorrectIds: mistakes, completedAt: new Date().toISOString() }); } }
+  function reset(ids: string[] | null = null) { setIndex(0); setValue(""); setAnswered(false); setScore(0); setMistakes([]); setComplete(false); setReviewIds(ids); }
+  if (complete) return <div className="quiz-complete"><p className="eyebrow">Durchlauf beendet</p><strong>{Math.round((score / session.length) * 100)}<span>%</span></strong><h2>{score} von {session.length} richtig</h2><div className="adaptive-actions">{mistakes.length ? <button className="outline-button" onClick={() => reset(mistakes)}>Fehler wiederholen</button> : null}<button className="primary-button" onClick={() => reset()}>Quiz neu starten</button></div></div>;
+  return <div className="quiz-layout"><header className="quiz-header"><div><p className="eyebrow">Aktive Abfrage</p><h2>Prüfe dein Verständnis.</h2></div><div className="score-chip"><span>{score}</span> Punkte</div></header><div className="quiz-type-tabs">{available.map((type) => <button key={type} className={kind === type ? "active" : ""} onClick={() => choose(type)}>{titles[type]}</button>)}</div><div className="quiz-progress"><span>Aufgabe {index + 1} von {session.length}</span><i><b style={{width:`${((index+1)/session.length)*100}%`}} /></i><span>{titles[kind]}</span></div><section className="question-panel"><h3>{question.prompt}</h3>{question.answers.length ? <div className="answer-grid">{question.answers.map((answer,i) => <button key={answer} className={answered ? answer === question.correct ? "correct" : value === answer ? "incorrect" : "" : value === answer ? "selected" : ""} onClick={() => !answered && setValue(answer)}><span>{String.fromCharCode(65+i)}</span>{answer}</button>)}</div> : <textarea className="quiz-text-answer" rows={4} value={value} disabled={answered} onChange={(e) => setValue(e.target.value)} placeholder="Deine Antwort …" />}{!answered ? <button className="primary-button quiz-submit" disabled={!value.trim()} onClick={submit}>Antwort prüfen</button> : <div className={`answer-feedback ${correct ? "correct" : "incorrect"}`}><div><strong>{correct ? "Richtig" : "Noch nicht ganz"}</strong>{!correct ? <span>Antwort: {question.correct}</span> : null}<p>{question.explanation}</p></div><button onClick={next}>{index + 1 === session.length ? "Ergebnis" : "Weiter"} →</button></div>}</section></div>;
 }
