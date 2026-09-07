@@ -35,6 +35,21 @@ function stringProperty(value: unknown, property: string) {
   return typeof candidate === "string" ? candidate : undefined;
 }
 
+function safeProviderDiagnostic(error: unknown) {
+  const rawMessage = error instanceof Error ? error.message : stringProperty(error, "message");
+  const message = rawMessage
+    ?.replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .slice(0, 300);
+
+  return {
+    name: error instanceof Error ? error.name : "UnknownError",
+    status: numericProperty(error, "status"),
+    code: stringProperty(error, "code"),
+    message,
+  };
+}
+
 export function workersAIErrorResponse(error: unknown) {
   if (error instanceof WorkersAIUnavailableError) {
     return apiError(
@@ -62,10 +77,7 @@ export function workersAIErrorResponse(error: unknown) {
     );
   }
 
-  console.error(
-    "[Lemon AI] Workers AI request failed.",
-    error instanceof Error ? error.name : "UnknownError",
-  );
+  console.error("[Lemon AI] Workers AI request failed.", safeProviderDiagnostic(error));
   return apiError(
     "Die Erstellung ist fehlgeschlagen. Bitte versuche es erneut.",
     "AI_GENERATION_FAILED",

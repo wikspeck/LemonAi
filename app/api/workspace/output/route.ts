@@ -25,8 +25,12 @@ const requestSchema = z.object({
 });
 
 function commonInstructions(kind: OutputKind, amount: number) {
+  const amountInstruction = kind === "quiz"
+    ? `Return exactly ${amount} questions in total across all four quiz arrays. Arrays for unused quiz types must be empty.`
+    : `Aim for ${amount} items where the format uses items.`;
+
   return [
-    `Create exactly one ${kind} learning output, aiming for ${amount} items where the format uses items.`,
+    `Create exactly one ${kind} learning output. ${amountInstruction}`,
     "Use only facts directly supported by the supplied workspace sources.",
     "Follow the user's request for scope, difficulty, brevity, and language.",
     "Use the source language unless the user explicitly requests another language.",
@@ -48,7 +52,19 @@ async function generateOutput(kind: OutputKind, prompt: string, context: string)
     case "notes": return generateStructured({ ...options, schema: generatedOutputSchemas.notes, schemaName: "notes_output" });
     case "explanation": return generateStructured({ ...options, schema: generatedOutputSchemas.explanation, schemaName: "explanation_output" });
     case "flashcards": return generateStructured({ ...options, schema: generatedOutputSchemas.flashcards, schemaName: "flashcard_output" });
-    case "quiz": return generateStructured({ ...options, schema: generatedOutputSchemas.quiz, schemaName: "quiz_output" });
+    case "quiz": {
+      const schema = generatedOutputSchemas.quiz.superRefine((output, refinement) => {
+        const total = Object.values(output.quizzes).reduce((sum, questions) => sum + questions.length, 0);
+        if (total !== amount) {
+          refinement.addIssue({
+            code: "custom",
+            path: ["quizzes"],
+            message: `Exactly ${amount} questions are required; received ${total}.`,
+          });
+        }
+      });
+      return generateStructured({ ...options, schema, schemaName: "quiz_output" });
+    }
     case "timeline": return generateStructured({ ...options, schema: generatedOutputSchemas.timeline, schemaName: "timeline_output" });
     case "comparison": return generateStructured({ ...options, schema: generatedOutputSchemas.comparison, schemaName: "comparison_output" });
     case "keyTerms": return generateStructured({ ...options, schema: generatedOutputSchemas.keyTerms, schemaName: "key_terms_output" });

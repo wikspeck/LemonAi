@@ -19,6 +19,7 @@ type ValidationDiagnostic = {
   path: string;
   code: string;
   expected?: string;
+  message: string;
 };
 
 async function getWorkersAI() {
@@ -39,6 +40,7 @@ function validationDiagnostics(error: z.ZodError): ValidationDiagnostic[] {
       path: issue.path.join(".") || "root",
       code: issue.code,
       expected: typeof expected === "string" ? expected : undefined,
+      message: issue.message.slice(0, 180),
     };
   });
 }
@@ -63,7 +65,7 @@ async function requestJson(
   input: string,
   jsonSchema: Record<string, unknown>,
   maxOutputTokens: number,
-) {
+): Promise<unknown> {
   const ai = await getWorkersAI();
   const result = await ai.run(CLOUDFLARE_AI_MODEL, {
     messages: [
@@ -78,37 +80,56 @@ async function requestJson(
   return result.response;
 }
 
+function responseLength(value: unknown) {
+  if (typeof value === "string") return value.length;
+  try {
+    return JSON.stringify(value)?.length ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+function decodeJsonResponse(value: unknown, schemaName: string) {
+  if (typeof value === "string") {
+    if (!value.trim()) {
+      logInvalidOutput(schemaName, 0, "empty");
+      throw new InvalidAIOutputError();
+    }
+
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      logInvalidOutput(schemaName, value.length, "json");
+      throw new InvalidAIOutputError();
+    }
+  }
+
+  if (typeof value === "object" && value !== null) return value;
+
+  logInvalidOutput(schemaName, responseLength(value), "empty");
+  throw new InvalidAIOutputError();
+}
+
 export async function generateStructured<Schema extends z.ZodType>(
   options: StructuredGenerationOptions<Schema>,
 ): Promise<z.output<Schema>> {
   const jsonSchema = z.toJSONSchema(options.schema, { target: "draft-7" }) as Record<string, unknown>;
-  const responseText = await requestJson(
+  const response = await requestJson(
     options.instructions,
     options.input,
     jsonSchema,
     options.maxOutputTokens,
   );
 
-  if (!responseText.trim()) {
-    logInvalidOutput(options.schemaName, 0, "empty");
-    throw new InvalidAIOutputError();
-  }
-
-  let decoded: unknown;
-  try {
-    decoded = JSON.parse(responseText);
-  } catch {
-    logInvalidOutput(options.schemaName, responseText.length, "json");
-    throw new InvalidAIOutputError();
-  }
+  const decoded = decodeJsonResponse(response, options.schemaName);
 
   const firstResult = options.schema.safeParse(decoded);
   if (firstResult.success) return firstResult.data;
 
   const diagnostics = validationDiagnostics(firstResult.error);
-  logInvalidOutput(options.schemaName, responseText.length, "schema", diagnostics);
+  logInvalidOutput(options.schemaName, responseLength(response), "schema", diagnostics);
 
-  const repairedText = await requestJson(
+  const repairedResponse = await requestJson(
     [
       "Repair the supplied JSON so it strictly matches the supplied JSON Schema.",
       "Preserve the existing educational content and language.",
@@ -123,19 +144,13 @@ export async function generateStructured<Schema extends z.ZodType>(
     options.maxOutputTokens,
   );
 
-  let repaired: unknown;
-  try {
-    repaired = JSON.parse(repairedText);
-  } catch {
-    logInvalidOutput(options.schemaName, repairedText.length, "json");
-    throw new InvalidAIOutputError();
-  }
+  const repaired = decodeJsonResponse(repairedResponse, options.schemaName);
 
   const repairedResult = options.schema.safeParse(repaired);
   if (!repairedResult.success) {
     logInvalidOutput(
       options.schemaName,
-      repairedText.length,
+      responseLength(repairedResponse),
       "schema",
       validationDiagnostics(repairedResult.error),
     );
