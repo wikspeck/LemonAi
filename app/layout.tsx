@@ -14,7 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Lemon AI",
-  description: "Lernmaterial einfach analysieren und zusammenfassen.",
+  description: "Deine Gedanken. Dein Modell. Dein Raum. Chatte mit Lemon AI.",
+  icons: { icon: "/assets/lemonlogo.svg", apple: "/assets/lemonlogo.svg" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

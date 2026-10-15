@@ -1,7 +1,7 @@
-import { LemonApp } from "@/app/components/lemon-app";
+import { ChatApp } from "@/app/components/chat-app";
 
 export default function Home() {
   return (
-    <LemonApp />
+    <ChatApp />
   );
 }
