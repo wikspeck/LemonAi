@@ -1,0 +1,1 @@
+<UserControl x:Class="Lemon2.CanvasView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"><StackPanel x:Name="Panel" Spacing="12" HorizontalAlignment="Stretch"/></UserControl>

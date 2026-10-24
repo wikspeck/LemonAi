@@ -1,0 +1,2 @@
+import { registry, tierDefaults } from "@/lib/lemon2/contracts";
+export function GET() { return Response.json({ version: 2, engine: "lemon2", models: registry, tierDefaults, effortImplementation: "application-output-budget-and-instructions", tierBenchmarkStatus: "not-evaluated", limits: { requestBytes: 1000000, canvasComponents: 64 }, fallbackPolicy: "explicit-retry-only" }, { headers: { "Cache-Control": "no-store" } }); }

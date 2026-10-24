@@ -1,0 +1,22 @@
+<Window x:Class="Lemon2.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="using:Lemon2" Title="Lemon 2">
+ <Grid x:Name="Root" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="24" RowSpacing="12">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Lemon 2 · Native Vorschau" Style="{StaticResource TitleTextBlockStyle}"/><Button Grid.Column="1" Content="Hell / Dunkel" Click="Theme_Click"/></Grid>
+  <StackPanel Grid.Row="1" Spacing="8">
+   <Expander Header="Backend-Verbindung" HorizontalAlignment="Stretch"><StackPanel Spacing="8"><TextBox x:Name="Endpoint" Header="Cloudflare-Worker-Adresse" PlaceholderText="https://dein-worker.workers.dev"/>
+   <StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="ConnectButton" Content="Verbinden" Click="Connect_Click"/><TextBlock Text="Engine: Lemon 2" VerticalAlignment="Center"/></StackPanel></StackPanel></Expander>
+   <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+    <ComboBox x:Name="Tier" Header="Tier" SelectedIndex="1" HorizontalAlignment="Stretch" SelectionChanged="Tier_SelectionChanged"><ComboBoxItem Content="Vortex" Tag="vortex"/><ComboBoxItem Content="Zenith" Tag="zenith"/><ComboBoxItem Content="Apex" Tag="apex"/></ComboBox>
+    <ComboBox x:Name="Effort" Grid.Column="1" Header="Effort" SelectedIndex="1" HorizontalAlignment="Stretch"><ComboBoxItem Content="Low" Tag="low"/><ComboBoxItem Content="Medium" Tag="medium"/><ComboBoxItem Content="High" Tag="high"/></ComboBox>
+    <ComboBox x:Name="OutputMode" Grid.Column="2" Header="Ausgabe" SelectedIndex="2" HorizontalAlignment="Stretch"><ComboBoxItem Content="Text" Tag="text"/><ComboBoxItem Content="Markdown" Tag="markdown"/><ComboBoxItem Content="Dynamic Canvas" Tag="canvas"/></ComboBox>
+   </Grid>
+   <ComboBox x:Name="Model" Header="Tatsächliches Modell" DisplayMemberPath="Name" HorizontalAlignment="Stretch"/>
+  </StackPanel>  <Grid Grid.Row="2" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Spacing="8"><TextBox x:Name="Search" PlaceholderText="Chats suchen" TextChanged="Search_TextChanged" AutomationProperties.Name="Chats suchen"/><ListView x:Name="Chats" DisplayMemberPath="Title" SelectionChanged="Chats_SelectionChanged" SelectionMode="Single"/><Button Content="Umbenennen" Click="Rename_Click"/><Button Content="Löschen" Click="Delete_Click"/></StackPanel><ListView x:Name="Messages" Grid.Column="1" SelectionMode="None"><ListView.ItemTemplate><DataTemplate><StackPanel Spacing="6" Padding="8"><TextBlock Text="{Binding Role}" FontWeight="SemiBold"/><local:MessageView/><local:CanvasView/></StackPanel></DataTemplate></ListView.ItemTemplate></ListView></Grid>
+  <InfoBar x:Name="Status" Grid.Row="3" IsOpen="True" IsClosable="False" Severity="Informational" Message="Verbinde die Worker-Adresse nach Bereitstellung der Lemon-2-API. Modellverfügbarkeit noch nicht live geprüft."/>
+  <StackPanel Grid.Row="4" Spacing="8"><TextBox x:Name="Composer" Header="Nachricht" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="150" KeyDown="Composer_KeyDown"/><StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="Send" Content="Senden" Click="Send_Click"/><Button x:Name="Stop" Content="Stoppen" IsEnabled="False" Click="Stop_Click"/><Button x:Name="New" Content="Neuer Chat" Click="New_Click"/><Button x:Name="Regenerate" Content="Erneut generieren" Click="Regenerate_Click"/></StackPanel></StackPanel>
+ </Grid>
+</Window>
+
+
+
+
