@@ -49,6 +49,13 @@ using (var service = new ChatService(v2Handler))
     using var body = JsonDocument.Parse(v2Handler.Body!);
     Check(v2Handler.Path == "/api/v2/chat" && body.RootElement.GetProperty("engine").GetString() == "lemon2" && body.RootElement.GetProperty("effort").GetString() == "high", "v2 tier effort API contract");
 }
+var legacyCanvas = new Message("assistant", "```json\n" + canvasJson + "\n```"); CanvasPresentation.Normalize(legacyCanvas);
+Check(legacyCanvas.CanvasJson is not null && legacyCanvas.Content == "", "legacy Canvas JSON rendered as Canvas");
+var brokenCanvas = new Message("assistant", "{\"version\":1,\"components\":[{\"type\":\"unknown\",\"text\":\"Useful preserved text\"}]}"); CanvasPresentation.Normalize(brokenCanvas);
+Check(brokenCanvas.Content.Contains("Useful preserved text") && !brokenCanvas.Content.Contains("components") && brokenCanvas.OriginalResponse is not null, "native malformed Canvas fallback preserves content and hides JSON");
+Check(ProductConfiguration.ApiBaseUri.Scheme == "https", "built-in secure production endpoint");
+var wrappedCanvas = new Message("assistant", "Introduction.\n" + canvasJson + "\nConclusion."); CanvasPresentation.Normalize(wrappedCanvas);
+Check(wrappedCanvas.CanvasJson is not null && wrappedCanvas.Content.Contains("Introduction.") && wrappedCanvas.Content.Contains("Conclusion.") && !wrappedCanvas.Content.Contains("components"), "prose-wrapped Canvas preserves explanation without raw JSON");
 Console.WriteLine($"{checks} checks passed.");
 sealed class FakeHandler(string data, HttpStatusCode status = HttpStatusCode.OK) : HttpMessageHandler
 {
@@ -59,4 +66,3 @@ sealed class FakeHandler(string data, HttpStatusCode status = HttpStatusCode.OK)
         return new(status) { Content = new StringContent(data, Encoding.UTF8, "text/event-stream") };
     }
 }
-

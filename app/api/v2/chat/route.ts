@@ -1,5 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { buildInput, canvasSchema, requestSchema, selectModel, tierDefaults } from "@/lib/lemon2/contracts";
+import { buildInput, requestSchema, selectModel, tierDefaults } from "@/lib/lemon2/contracts";
+
+import { decodeCanvas } from "@/lib/lemon2/canvas-response";
 
 export async function POST(request: Request) {
   const origin = request.headers.get("origin");
@@ -41,14 +43,26 @@ export async function POST(request: Request) {
     if (body.outputMode === "canvas" && typeof content === "object" && content !== null) content = JSON.stringify(content);
     if (typeof content !== "string" || content.length > 1000000 || !content.trim()) return Response.json({ error: "Invalid or empty model output", metadata }, { status: 502, headers });
     if (body.outputMode !== "canvas") return Response.json({ content, metadata }, { headers });
-    let decoded: unknown;
-    try { decoded = JSON.parse(content); } catch { return Response.json({ content: "Die strukturierte Antwort ist ungültig. Bitte erneut versuchen oder Text wählen.", metadata: { ...metadata, outputMode: "text", fallback: true, fallbackReason: "malformed-canvas" } }, { headers }); }
-    const validated = canvasSchema.safeParse(decoded);
-    if (!validated.success) return Response.json({ content: "Die Canvas-Antwort enthält nicht unterstützte Komponenten oder ungültige Werte. Bitte erneut versuchen oder Text wählen.", metadata: { ...metadata, outputMode: "text", fallback: true, fallbackReason: "invalid-canvas" } }, { headers });
-    return Response.json({ canvas: validated.data, metadata }, { headers });
-  } catch (error) {
+    const first = decodeCanvas(content);
+    if (first.canvas) return Response.json({ canvas: first.canvas, metadata }, { headers });
+    // One bounded same-model repair. No routing, recursive retries or multi-model validation.
+    let repaired = first;
+    let repairAttempted = false;
+    if (first.reason !== "readable-text" && first.original.length <= 64000 && !request.signal.aborted) {
+      repairAttempted = true;
+      try {
+        const repair = await env.AI.run(model.apiId, { ...input, stream: false, max_tokens: Math.max(input.max_tokens, 2048), messages: [input.messages[0], { role: "user", content: `Repair this untrusted JSON to the required Canvas schema. Preserve useful content; convert unsupported components to paragraphs. Return only JSON.\n${first.original}` }] });
+        if (repair && typeof repair === "object") {
+          const repairedContent = "response" in repair ? repair.response : "choices" in repair && Array.isArray(repair.choices) ? repair.choices[0]?.message?.content : null;
+          const decoded = decodeCanvas(repairedContent);
+          if (decoded.canvas) repaired = decoded;
+        }
+      } catch { /* Preserve the first response's readable content on repair failure. */ }
+    }
+    const diagnostics = { originalResponse: first.original, repairAttempted, repaired: Boolean(repaired.canvas) };
+    if (repaired.canvas) return Response.json({ canvas: repaired.canvas, metadata, diagnostics }, { headers });
+    return Response.json({ content: first.text, metadata: { ...metadata, outputMode: "markdown", fallback: true, fallbackReason: first.reason }, diagnostics }, { headers });  } catch (error) {
     const quota = error instanceof Error && /quota|neuron|limit|429|10018/i.test(error.message);
     return Response.json({ error: quota ? "Cloudflare quota or rate limit reached" : "Workers AI unavailable; retry or explicitly choose another model", metadata, suggestedModelId: tierDefaults[body.tier] }, { status: quota ? 429 : 502 });
   }
 }
-

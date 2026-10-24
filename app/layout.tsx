@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Lemon AI",
-  description: "Deine Gedanken. Dein Modell. Dein Raum. Chatte mit Lemon AI.",
+  description: "Lemon für Windows: native AI-Gespräche, flexible Modelle und interaktive Antworten mit Dynamic Canvas.",
   icons: { icon: "/assets/lemonlogo.svg", apple: "/assets/lemonlogo.svg" },
 };
 

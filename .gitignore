@@ -48,3 +48,4 @@ next-env.d.ts
 
 # Local browser verification artifacts
 .playwright-cli/
+/downloads/*.bin

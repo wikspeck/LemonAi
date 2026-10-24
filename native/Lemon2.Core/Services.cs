@@ -72,7 +72,7 @@ public sealed class ChatService : IDisposable
         if (catalogue.Version != 2 || catalogue.Models is null || catalogue.Models.Count is < 1 or > 100 || catalogue.TierDefaults is null) throw new InvalidDataException("Modellkatalog ist ungültig.");
         return catalogue;
     }
-    public async Task<(string Content, string? CanvasJson, bool Fallback)> GenerateCanvasAsync(Uri server, string model, IEnumerable<Message> messages, GenerationConfig configuration, CancellationToken token)
+    public async Task<CanvasReply> GenerateCanvasAsync(Uri server, string model, IEnumerable<Message> messages, GenerationConfig configuration, CancellationToken token)
     {
         ValidateServer(server);
         var json = JsonSerializer.Serialize(new { engine = "lemon2", modelId = model, tier = configuration.Tier, effort = configuration.Effort, outputMode = "canvas", stream = false, messages = messages.Select(m => new { role = m.Role, content = m.CanvasJson ?? m.Content }) });
@@ -81,8 +81,14 @@ public sealed class ChatService : IDisposable
         var payload = await response.Content.ReadAsStringAsync(token);
         if (payload.Length > 1_000_000) throw new InvalidDataException("Antwort zu groß.");
         using var document = JsonDocument.Parse(payload);
-        if (document.RootElement.TryGetProperty("canvas", out var canvas)) { var raw = canvas.GetRawText(); var parsed = CanvasParser.Parse(raw); return (parsed.Title, raw, false); }
-        if (document.RootElement.TryGetProperty("content", out var content)) return (content.GetString() ?? "", null, true);
+        if (document.RootElement.TryGetProperty("canvas", out var canvas)) { var raw = canvas.GetRawText(); var parsed = CanvasParser.Parse(raw); return new("", raw, false, null); }
+        if (document.RootElement.TryGetProperty("content", out var content)) {
+            var message = new Message("assistant", content.GetString() ?? "") { OutputMode = "markdown" };
+            CanvasPresentation.Normalize(message);
+            string? original = null;
+            if (document.RootElement.TryGetProperty("diagnostics", out var diagnostics) && diagnostics.TryGetProperty("originalResponse", out var source)) original = source.GetString();
+            return new(message.Content, message.CanvasJson, true, original ?? message.OriginalResponse);
+        }
         throw new InvalidDataException("Canvas-Antwort fehlt.");
     }
     private static void ValidateServer(Uri server)
@@ -102,6 +108,3 @@ public sealed class ChatService : IDisposable
     }
     public void Dispose() => http.Dispose();
 }
-
-
-
