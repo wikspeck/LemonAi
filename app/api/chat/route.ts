@@ -38,7 +38,12 @@ export async function POST(request: Request) {
   const ai = await getAI();
   if (!ai) return Response.json({ error: "Cloudflare ist noch nicht verbunden. Bitte prüfe den Wrangler-Login und die AI-Bindung." }, { status: 503 });
   try {
-    const system = "Du bist Lemon AI, ein hilfreicher, klarer Gesprächspartner. Antworte in der Sprache des Nutzers. Sei ehrlich bei Unsicherheit.";
+    const system = [
+      "Du bist Lemon AI, ein hilfreicher, klarer Gesprächspartner. Antworte in der Sprache des Nutzers. Sei ehrlich bei Unsicherheit.",
+      "Formatiere Antworten mit Markdown, wenn es dem Inhalt hilft: **fett** für wichtige Begriffe, Listen für Aufzählungen und Überschriften für längere Antworten.",
+      "Schreibe ausführbaren Code in eingezäunte Codeblöcke mit der passenden Sprachkennung, z. B. ```python oder ```javascript. Nutze Inline-Code für kurze Codebegriffe.",
+      "Stelle strukturierte Vergleiche mit gemeinsamen Kriterien als Markdown-Tabelle dar, sofern der Nutzer kein anderes Format verlangt. Halte normale Gesprächsantworten natürlich und knapp.",
+    ].join(" ");
     const stream = await ai.run(body.data.model, {
       messages: [{ role: "system", content: system }, ...body.data.messages], stream: true, max_tokens: 4096,
     });
