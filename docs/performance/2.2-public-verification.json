@@ -1,0 +1,21 @@
+{
+  "health": 200,
+  "registry": 200,
+  "modelCount": 9,
+  "enabledModels": 7,
+  "tierDefaults": {
+    "vortex": "qwen3",
+    "zenith": "mistral",
+    "apex": "qwen38"
+  },
+  "legacyDownload": {
+    "status": 200,
+    "bytes": 87185631,
+    "sha256": "0f2951ca8b07441ab62c226bb4d8444ce2f51a4ad80cceb64b099bef748e0e98"
+  },
+  "legacyChat": {
+    "status": 200,
+    "characters": 66,
+    "totalMs": 498.8348
+  }
+}

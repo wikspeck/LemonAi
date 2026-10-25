@@ -1,0 +1,24 @@
+[
+  {
+    "metric": "markdown_25_rebinds_ms",
+    "value": 2501.9781,
+    "characters": 11369
+  },
+  {
+    "metric": "stream_30_updates_elapsed_ms",
+    "value": 3290.9794,
+    "scheduledDelayMs": 1650
+  },
+  {
+    "metric": "dispatcher_queue_median_ms",
+    "value": 0.0052
+  },
+  {
+    "metric": "canvas_40_rebinds_ms",
+    "value": 395.336
+  },
+  {
+    "metric": "working_set_bytes",
+    "value": 395649024
+  }
+]

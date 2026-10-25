@@ -12,7 +12,7 @@ public sealed class ConversationStore
     public async Task<List<Conversation>> LoadAsync()
     {
         if (!File.Exists(path)) return [];
-        var saved = JsonSerializer.Deserialize<History>(await File.ReadAllTextAsync(path)) ?? throw new InvalidDataException("Verlauf ist ungültig.");
+        var saved = await Task.Run(async () => JsonSerializer.Deserialize<History>(await File.ReadAllTextAsync(path))) ?? throw new InvalidDataException("Verlauf ist ungültig.");
         if (saved.Version != 1 || saved.Conversations is null || saved.Conversations.Any(c => c is null || c.Messages is null || c.Messages.Any(m => m is null || m.Content is null || m.Role is not ("user" or "assistant")))) throw new InvalidDataException("Verlaufsversion oder Nachrichten sind ungültig. Die Datei wurde nicht verändert.");
         return saved.Conversations;
     }
@@ -23,7 +23,8 @@ public sealed class ConversationStore
         try {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var temporary = path + ".tmp";
-        await File.WriteAllTextAsync(temporary, JsonSerializer.Serialize(new History(1, conversations)));
+        var snapshot = conversations.Select(chat => chat with { Messages = chat.Messages.Select(message => message.Snapshot()).ToList() }).ToList();
+        await Task.Run(async () => { await File.WriteAllTextAsync(temporary, JsonSerializer.Serialize(new History(1, snapshot))); });
         File.Move(temporary, path, true);
         } finally { writeLock.Release(); }
     }
@@ -35,15 +36,15 @@ public sealed class ChatService : IDisposable
     public async IAsyncEnumerable<string> StreamAsync(Uri server, string model, IEnumerable<Message> messages, [EnumeratorCancellation] CancellationToken token, GenerationConfig? configuration = null)
     {
         if (server.Scheme != "https" && !(server.IsLoopback && server.Scheme == "http")) throw new InvalidOperationException("Bitte eine HTTPS-Worker-Adresse verwenden.");
-        var history = messages.Select(m => new { role = m.Role, content = m.CanvasJson ?? m.Content });
-        var json = configuration is null ? JsonSerializer.Serialize(new { model, messages = history }) : JsonSerializer.Serialize(new { engine = "lemon2", modelId = model, tier = configuration.Tier, effort = configuration.Effort, outputMode = configuration.OutputMode, stream = true, messages = history });
+        var json = ApiRequest.Serialize(model, messages, configuration, true);
         using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(server, configuration is null ? "/api/chat" : "/api/v2/chat")) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
         using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
         if (!response.IsSuccessStatusCode) throw new HttpRequestException($"Backend meldet {(int)response.StatusCode}. Bitte Verbindung und Cloudflare-Kontingent prüfen.");
         if (response.Content.Headers.ContentType?.MediaType != "text/event-stream") throw new InvalidDataException("Das Backend liefert keinen SSE-Stream.");
         using var reader = new StreamReader(await response.Content.ReadAsStreamAsync(token));
+        var lines = new BoundedLineReader(reader);
         var complete = false;
-        while (await ReadBoundedLineAsync(reader, token) is { } line)
+        while (await lines.ReadLineAsync(token) is { } line)
         {
             if (line.Length > 1_000_000) throw new InvalidDataException("Stream-Ereignis zu groß.");
             if (!line.StartsWith("data:")) continue;
@@ -75,7 +76,7 @@ public sealed class ChatService : IDisposable
     public async Task<CanvasReply> GenerateCanvasAsync(Uri server, string model, IEnumerable<Message> messages, GenerationConfig configuration, CancellationToken token)
     {
         ValidateServer(server);
-        var json = JsonSerializer.Serialize(new { engine = "lemon2", modelId = model, tier = configuration.Tier, effort = configuration.Effort, outputMode = "canvas", stream = false, messages = messages.Select(m => new { role = m.Role, content = m.CanvasJson ?? m.Content }) });
+        var json = ApiRequest.Serialize(model, messages, configuration with { OutputMode = "canvas" }, false);
         using var response = await http.PostAsync(new Uri(server, "/api/v2/chat"), new StringContent(json, Encoding.UTF8, "application/json"), token);
         response.EnsureSuccessStatusCode();
         var payload = await response.Content.ReadAsStringAsync(token);
@@ -94,17 +95,6 @@ public sealed class ChatService : IDisposable
     private static void ValidateServer(Uri server)
     {
         if (server.Scheme != "https" && !(server.IsLoopback && server.Scheme == "http")) throw new InvalidOperationException("Bitte eine HTTPS-Worker-Adresse verwenden.");
-    }
-    private static async Task<string?> ReadBoundedLineAsync(StreamReader reader, CancellationToken token)
-    {
-        var line = new StringBuilder(); var character = new char[1];
-        while (await reader.ReadAsync(character.AsMemory(), token) != 0)
-        {
-            if (character[0] == '\n') return line.ToString().TrimEnd('\r');
-            if (line.Length >= 1_000_000) throw new InvalidDataException("Stream-Ereignis zu groß.");
-            line.Append(character[0]);
-        }
-        return line.Length == 0 ? null : line.ToString();
     }
     public void Dispose() => http.Dispose();
 }

@@ -1,0 +1,36 @@
+name: Windows installer candidate
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Verify and install build-only Inno Setup compiler
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory work/tools -Force | Out-Null
+          $file = Join-Path $pwd 'work/tools/innosetup-6.7.3.exe'
+          Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe' -OutFile $file
+          if ((Get-FileHash $file -Algorithm SHA256).Hash -ne '9C73C3BAE7ED48D44112A0F48E66742C00090BDB5BEF71D9D3C056C66E97B732') { throw 'Compiler checksum mismatch' }
+          $signature = Get-AuthenticodeSignature $file
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Pyrsys') { throw 'Compiler signature invalid' }
+          $process = Start-Process $file -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',"/DIR=`"$pwd/work/tools/inno`"" -WindowStyle Hidden -PassThru -Wait
+          if ($process.ExitCode) { throw 'Compiler installation failed' }
+      - name: Core regressions
+        run: dotnet run --project native/Lemon2.Checks -c Release
+      - name: Build self-contained native installer
+        shell: pwsh
+        run: ./scripts/build-installer.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lemon-2.2.0-Windows-installer-candidate
+          path: native/artifacts/2.2.0/Lemon-2.2.0-Setup.exe
+          retention-days: 14
+      # Deliberately no automatic stable release: clean Windows validation and
+      # signing require evidence beyond a successful build on a developer runner.

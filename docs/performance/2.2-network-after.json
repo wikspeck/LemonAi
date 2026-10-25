@@ -1,0 +1,39 @@
+[
+  {
+    "metric": "registry_fetch_ms",
+    "value": 217.79209999999998,
+    "models": 9,
+    "tierDefaults": {
+      "vortex": "qwen3",
+      "zenith": "mistral",
+      "apex": "qwen38"
+    }
+  },
+  {
+    "metric": "provider_stream",
+    "tier": "vortex",
+    "model": "qwen3",
+    "status": 200,
+    "ttftMs": 1325.9984,
+    "totalMs": 1403.4427,
+    "characters": 60
+  },
+  {
+    "metric": "provider_stream",
+    "tier": "zenith",
+    "model": "mistral",
+    "status": 200,
+    "ttftMs": 263.74569999999994,
+    "totalMs": 468.07179999999994,
+    "characters": 49
+  },
+  {
+    "metric": "provider_stream",
+    "tier": "apex",
+    "model": "qwen38",
+    "status": 200,
+    "ttftMs": 40363.51669999999,
+    "totalMs": 41425.4651,
+    "characters": 122
+  }
+]

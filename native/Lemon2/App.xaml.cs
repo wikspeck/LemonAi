@@ -10,7 +10,7 @@ public partial class App : Application
     }
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        try { window = new MainWindow(); window.Activate(); }
+        try { window = Environment.GetCommandLineArgs().Contains("--benchmark") ? new RenderBenchmarkWindow() : new MainWindow(); window.Activate(); }
         catch (Exception error) { RecordError(error); throw; }
     }
 }

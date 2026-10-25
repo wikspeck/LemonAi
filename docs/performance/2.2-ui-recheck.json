@@ -1,0 +1,37 @@
+[
+  {
+    "metric": "canvas_40_rebinds_ms",
+    "value": 48.1788,
+    "minimum": 46.7165,
+    "maximum": 67.7086,
+    "samples": 3
+  },
+  {
+    "metric": "dispatcher_queue_median_ms",
+    "value": 0.0066,
+    "minimum": 0.0034,
+    "maximum": 0.0115,
+    "samples": 3
+  },
+  {
+    "metric": "markdown_25_rebinds_ms",
+    "value": 272.6002,
+    "minimum": 242.3965,
+    "maximum": 352.7328,
+    "samples": 3
+  },
+  {
+    "metric": "stream_30_updates_elapsed_ms",
+    "value": 2573.8942,
+    "minimum": 2488.4604,
+    "maximum": 3297.6114,
+    "samples": 3
+  },
+  {
+    "metric": "working_set_bytes",
+    "value": 178757632,
+    "minimum": 178642944,
+    "maximum": 179359744,
+    "samples": 3
+  }
+]

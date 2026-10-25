@@ -1,0 +1,92 @@
+[
+  {
+    "model": "@cf/qwen/qwen3.8-27b",
+    "status": 200,
+    "totalMs": 5838.8427,
+    "valid": true,
+    "canvas": {
+      "version": 1,
+      "title": "Doubling Calculator",
+      "components": [
+        {
+          "type": "slider",
+          "label": "Value",
+          "key": "value",
+          "min": 0,
+          "max": 10,
+          "initial": 2
+        },
+        {
+          "type": "calculation",
+          "label": "Double",
+          "operation": "add",
+          "inputs": [
+            "value",
+            "value"
+          ]
+        }
+      ]
+    },
+    "schemaValid": true
+  },
+  {
+    "model": "@cf/zai-org/glm-4.7-flash",
+    "status": 200,
+    "totalMs": 25053.9646,
+    "valid": true,
+    "canvas": {
+      "version": 1,
+      "title": "Doubling Calculator",
+      "components": [
+        {
+          "type": "slider",
+          "label": "Value",
+          "key": "value",
+          "min": 0,
+          "max": 10,
+          "initial": 0
+        },
+        {
+          "type": "calculation",
+          "label": "Double",
+          "operation": "add",
+          "inputs": [
+            "value",
+            "value"
+          ]
+        }
+      ]
+    },
+    "schemaValid": true
+  },
+  {
+    "model": "@cf/mistralai/mistral-small-3.1-24b-instruct",
+    "status": 200,
+    "totalMs": 3668.854299999999,
+    "valid": true,
+    "canvas": {
+      "components": [
+        {
+          "initial": 2,
+          "key": "value",
+          "label": "Value",
+          "max": 10,
+          "min": 0,
+          "type": "slider"
+        },
+        {
+          "inputs": [
+            "value",
+            "value"
+          ],
+          "label": "Double",
+          "operation": "add",
+          "type": "calculation"
+        }
+      ],
+      "title": "Calculator",
+      "version": 1
+    },
+    "schemaValid": true
+  }
+]

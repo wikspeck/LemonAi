@@ -1,0 +1,30 @@
+[
+  {
+    "launch": 0,
+    "firstObservedLaunch": true,
+    "inputIdleMs": 1332.7473,
+    "reachedInputIdle": true,
+    "workingSetBytes": 132456448
+  },
+  {
+    "launch": 1,
+    "firstObservedLaunch": false,
+    "inputIdleMs": 573.9118,
+    "reachedInputIdle": true,
+    "workingSetBytes": 127516672
+  },
+  {
+    "launch": 2,
+    "firstObservedLaunch": false,
+    "inputIdleMs": 363.5189,
+    "reachedInputIdle": true,
+    "workingSetBytes": 135426048
+  },
+  {
+    "launch": 3,
+    "firstObservedLaunch": false,
+    "inputIdleMs": 550.4129,
+    "reachedInputIdle": true,
+    "workingSetBytes": 133242880
+  }
+]

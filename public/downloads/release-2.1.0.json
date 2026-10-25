@@ -1,0 +1,16 @@
+{
+  "version": "2.1.0",
+  "channel": "preview",
+  "published": true,
+  "fileName": "Lemon-2.1-win-x64.zip",
+  "bytes": 87185631,
+  "sha256": "0f2951ca8b07441ab62c226bb4d8444ce2f51a4ad80cceb64b099bef748e0e98",
+  "parts": [
+    "/downloads/lemon-2.1.0-part-000.bin",
+    "/downloads/lemon-2.1.0-part-001.bin",
+    "/downloads/lemon-2.1.0-part-002.bin",
+    "/downloads/lemon-2.1.0-part-003.bin",
+    "/downloads/lemon-2.1.0-part-004.bin",
+    "/downloads/lemon-2.1.0-part-005.bin"
+  ]
+}

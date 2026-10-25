@@ -1,0 +1,23 @@
+[
+  {
+    "metric": "registry_fetch_ms",
+    "value": 112.98250000000002,
+    "models": 6
+  },
+  {
+    "metric": "provider_stream",
+    "tier": "vortex",
+    "status": 200,
+    "ttftMs": 1429.5026,
+    "totalMs": 1531.4791,
+    "characters": 55
+  },
+  {
+    "metric": "provider_stream",
+    "tier": "zenith",
+    "status": 200,
+    "ttftMs": 25379.2543,
+    "totalMs": 25624.3829,
+    "characters": 90
+  }
+]

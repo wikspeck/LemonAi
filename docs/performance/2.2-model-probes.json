@@ -1,0 +1,42 @@
+[
+  {
+    "model": "@cf/qwen/qwen3.8-27b",
+    "status": 200,
+    "ttftMs": 1314.9171000000001,
+    "totalMs": 1677.0215,
+    "characters": 77,
+    "reasoningCharacters": 0,
+    "preview": "\n\nA tree is a tall, woody perennial plant with a trunk, branches, and leaves.",
+    "error": ""
+  },
+  {
+    "model": "@cf/zai-org/glm-4.7-flash",
+    "status": 200,
+    "ttftMs": 9682.8893,
+    "totalMs": 10413.1926,
+    "characters": 73,
+    "reasoningCharacters": 1752,
+    "preview": "A tree is a tall, woody perennial plant with a single main stem or trunk.",
+    "error": ""
+  },
+  {
+    "model": "@cf/deepseek-ai/deepseek-v4.1-flash-1017",
+    "status": 502,
+    "ttftMs": null,
+    "totalMs": 390.1370000000006,
+    "characters": 0,
+    "reasoningCharacters": 0,
+    "preview": "",
+    "error": "{\"error\":\"AiError: 5035: Model @cf/deepseek-ai/deepseek-v4.1-flash-1017 is not available on the Workers Free plan. Upgrade to access this model: https://dash.cloudflare.com/?to=/:account/workers/plans\"}"
+  },
+  {
+    "model": "@cf/mistralai/mistral-small-3.1-24b-instruct",
+    "status": 200,
+    "ttftMs": 799.2289000000001,
+    "totalMs": 1105.8354,
+    "characters": 77,
+    "reasoningCharacters": 0,
+    "preview": "A tree is a tall plant with a trunk and branches that typically bears leaves.",
+    "error": ""
+  }
+]

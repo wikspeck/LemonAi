@@ -2,6 +2,19 @@
 
 Die Daten älterer Einträge sind Commit-Daten, keine belegten Veröffentlichungstermine. Bei der Prüfung am 25.10.2026 existieren keine Git-Tags und keine GitHub-Releases. Nicht belegte Beta- oder 1.x-Nummern werden nicht nachträglich erfunden.
 
+## Lemon 2.2 — Unreleased / release candidate
+
+Noch keine abgeschlossene Veröffentlichung. Der Test auf einer sauberen Windows-Installation steht aus; das Paket ist nicht signiert.
+
+- Einheitliche native Lemon-Oberfläche mit hellem/dunklem Theme und Modell-/Effort-Auswahl am Composer.
+- Gepuffertes SSE-Lesen, inkrementelle Textdarstellung beim Streaming, weniger Listen-Neuaufbau und asynchrone Verlaufsspeicherung.
+- Behebung verlorener Canvas-Antworten ohne Begleittext; gespeicherte Canvas-Zustände und sichere Schema-Prüfung bleiben erhalten.
+- Englisch als Standard, deutsche und polnische UI-Ressourcen; separat wählbare AI-Antwortsprache.
+- F11-Vollbild und Speicherung von Fenstergröße/-zustand.
+- Qwen 3.8 und GLM 4.7 Flash mit echten Streaming-/Canvas-Proben; Mistral als Zenith-Standard. DeepSeek V4.1 ist im vorhandenen Free-Tarif gesperrt und bleibt deaktiviert.
+- Wiederholbarer Inno-Setup-Installer mit enthaltenen Laufzeiten, Startmenü, optionaler Desktop-Verknüpfung und Deinstallation bei Erhalt der Nutzerdaten.
+- Leistungswerte und verbleibende Prüfungen sind im Repository dokumentiert. Es wird kein bestandener Clean-Windows-Test behauptet.
+
 ## Lemon 2.1 Preview — 25.10.2026
 
 Windows-Vorschau als Download auf der Produktwebsite; kein GitHub-Release und kein signierter Installer.

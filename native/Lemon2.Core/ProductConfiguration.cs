@@ -1,7 +1,7 @@
 namespace Lemon2;
 public static class ProductConfiguration
 {
-    public const string Version = "2.1.0";
+    public const string Version = "2.2.0";
     public static Uri ApiBaseUri
     {
         get
@@ -21,7 +21,7 @@ public static class CanvasPresentation
     {
         if (message.Role != "assistant") return;
         if (message.CanvasJson is not null) {
-            try { CanvasParser.Parse(message.CanvasJson); return; }
+            try { message.GetCanvasDocument(); return; }
             catch { message.OriginalResponse ??= message.CanvasJson; message.Content = message.CanvasJson; message.CanvasJson = null; }
         }
         var raw = message.Content.Trim().TrimStart('\uFEFF');
@@ -52,10 +52,8 @@ public static class CanvasPresentation
                 try { var value = System.Text.Json.JsonSerializer.Deserialize<string>(match.Groups[1].Value); if (!string.IsNullOrWhiteSpace(value)) fragments.Add(value); } catch { }
                 if (fragments.Count >= 64) break;
             }
-            message.Content = fragments.Count > 0 ? string.Join("\n\n", new[] { prefix }.Concat(fragments.Distinct()).Append(suffix).Where(value => value.Length > 0)) : "Die interaktive Antwort konnte nicht dargestellt werden. Bitte erneut versuchen.";
+            message.Content = fragments.Count > 0 ? string.Join("\n\n", new[] { prefix }.Concat(fragments.Distinct()).Append(suffix).Where(value => value.Length > 0)) : L.T("CanvasError");
             message.OutputMode = "markdown";
         }
     }
 }
-
-

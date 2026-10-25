@@ -56,6 +56,40 @@ Check(brokenCanvas.Content.Contains("Useful preserved text") && !brokenCanvas.Co
 Check(ProductConfiguration.ApiBaseUri.Scheme == "https", "built-in secure production endpoint");
 var wrappedCanvas = new Message("assistant", "Introduction.\n" + canvasJson + "\nConclusion."); CanvasPresentation.Normalize(wrappedCanvas);
 Check(wrappedCanvas.CanvasJson is not null && wrappedCanvas.Content.Contains("Introduction.") && wrappedCanvas.Content.Contains("Conclusion.") && !wrappedCanvas.Content.Contains("components"), "prose-wrapped Canvas preserves explanation without raw JSON");
+
+using var englishSource = typeof(Message).Assembly.GetManifestResourceStream("Lemon2.Core.Localization.en.json")!;
+var localizationKeys = JsonSerializer.Deserialize<Dictionary<string,string>>(englishSource)!.Keys.ToHashSet();
+foreach (var locale in new[] { "en", "de", "pl" }) {
+    using var translationSource = typeof(Message).Assembly.GetManifestResourceStream($"Lemon2.Core.Localization.{locale}.json")!;
+    var translations = JsonSerializer.Deserialize<Dictionary<string,string>>(translationSource)!;
+    Check(localizationKeys.SetEquals(translations.Keys) && translations.Values.All(value => !string.IsNullOrWhiteSpace(value)), "complete localization resources " + locale);
+    L.SetLanguage(locale);
+    Check(L.T("Settings") != "Settings" || locale == "en", "localized settings " + locale);
+    Check(L.T("CanvasError") != "CanvasError" && L.T("Send") != "Send" || locale == "en", "localized messages " + locale);
+}
+L.SetLanguage("en");
+var settingsDirectory = Path.Combine(Path.GetTempPath(), "lemon-settings-" + Guid.NewGuid());
+Directory.CreateDirectory(settingsDirectory);
+try {
+    var settingsPath = Path.Combine(settingsDirectory, "settings.json"); var settingsStore = new SettingsStore(settingsPath);
+    Check((await settingsStore.LoadAsync()).Language == "en", "English default");
+    await settingsStore.SaveAsync(new(Language:"pl", ResponseLanguage:"de", Width:900, Fullscreen:true));
+    var savedSettings = await settingsStore.LoadAsync();
+    Check(savedSettings.Language == "pl" && savedSettings.ResponseLanguage == "de" && savedSettings.Fullscreen, "independent UI and response language persisted");
+    await File.WriteAllTextAsync(settingsPath, "{\"Version\":99}");
+    await MustFail(async () => { await settingsStore.LoadAsync(); }, "unknown settings version rejected");
+} finally { Directory.Delete(settingsDirectory,true); }
+var requested = ApiRequest.Serialize("qwen3", [new("user","hello")], new("vortex","low","text","pl"), true);
+using(var body = JsonDocument.Parse(requested)) Check(body.RootElement.GetProperty("responseLanguage").GetString() == "pl", "explicit response language transmitted");
+var bufferBoundary = new string('a', 4090);
+using(var boundaryService = new ChatService(new FakeHandler("data: {\"response\":\"" + bufferBoundary + "\"}\n\ndata: [DONE]\n\n"))) Check(await Collect(boundaryService) == bufferBoundary, "SSE event spanning buffered reads");
+var cachedCanvasMessage = new Message("assistant", "") { CanvasJson = canvasJson };
+Check(ReferenceEquals(cachedCanvasMessage.GetCanvasDocument(),cachedCanvasMessage.GetCanvasDocument()), "Canvas document cache");
+var snapshot = cachedCanvasMessage.Snapshot(); snapshot.NumericState["value"] = 9;
+Check(!cachedCanvasMessage.NumericState.ContainsKey("value"), "history snapshot isolates mutable Canvas state");
+
+using(var releaseSource = typeof(Message).Assembly.GetManifestResourceStream("Lemon2.Core.CHANGELOG.md")) Check(releaseSource is not null, "canonical changelog embedded for native release notes");
+Check(new GenerationConfig().OutputMode == "markdown", "new conversations stream Markdown by default");
 Console.WriteLine($"{checks} checks passed.");
 sealed class FakeHandler(string data, HttpStatusCode status = HttpStatusCode.OK) : HttpMessageHandler
 {

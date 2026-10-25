@@ -1,5 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import release from "@/public/downloads/release.json";
+import release from "@/public/downloads/release-2.1.0.json";
 export async function GET(request: Request) {
  const manifest = release as { published: boolean; bytes: number; sha256: string; parts: string[]; fileName: string };
  if (!manifest.published || !manifest.parts.length) return new Response("Release not published", { status:404 });

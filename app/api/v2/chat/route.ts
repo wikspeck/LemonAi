@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   try { model = selectModel(body.tier, body.modelId); }
   catch { return Response.json({ error: "Model unavailable for this tier", suggestedModelId: tierDefaults[body.tier] }, { status: 400 }); }
   const input = buildInput(body);
-  const metadata = { engine: body.engine, tier: body.tier, effort: body.effort, outputMode: body.outputMode, modelId: model.id, apiModelId: model.apiId, fallback: false, effortImplementation: "application-output-budget-and-instructions" };
+  const metadata = { engine: body.engine, tier: body.tier, effort: body.effort, outputMode: body.outputMode, modelId: model.id, apiModelId: model.apiId, fallback: false, effortImplementation: model.nativeEffort ? "native-reasoning-effort-and-output-budget" : "application-output-budget-and-instructions" };
   try {
     if (request.signal.aborted) return Response.json({ error: "Canceled" }, { status: 499 });
     const { env } = await getCloudflareContext({ async: true });

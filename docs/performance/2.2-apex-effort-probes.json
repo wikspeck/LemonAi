@@ -1,0 +1,26 @@
+[
+  {
+    "effort": "medium",
+    "status": 200,
+    "ttftMs": 3023.4053,
+    "totalMs": 13571.8799,
+    "characters": 1172,
+    "reasoningCharacters": 0,
+    "hasFunction": true,
+    "hasEmptyGuard": true,
+    "response": "\n\n## Function\n\n```python\ndef largest(numbers: list) -> int | float:\n    \"\"\"Return the largest number in a non-empty list.\n\n    Raises:\n        ValueError: If the list is empty.\n    \"\"\"\n    if not numbers:\n        raise ValueError(\"Cannot find the largest of an empty list.\")\n    return max(numbers)\n```\n\n## Brief Explanation\n\n- **Empty-list guard:** `if not numbers` is `True` for `[]` (and `None`, though the type hint discourages that). We raise `ValueError` before doing any work, giving the caller a clear, actionable message.\n- **`max()`:** Python's built-in `max()` scans the list once in **O(n)** time and returns the greatest element using the default `<` comparison, so it works for `int`, `float`, `Decimal`, etc.\n- **Why not a manual loop?** You *could* write:\n\n  ```python\n  best = numbers[0]\n  for n in numbers[1:]:\n      if n > best:\n          best = n\n  return best\n  ```\n\n  This is identical in performance, but `max()` is shorter, more readable, and less error-prone (no off-by-one on the loop).\n\n## Quick demo\n\n```python\n>>> largest([3, 7, 2, 9, 5])\n9\n>>> largest([-1, -4, -2])\n-1\n>>> largest([])\nValueError: Cannot find the largest of an empty list.\n```",
+    "error": ""
+  },
+  {
+    "effort": "high",
+    "status": 200,
+    "ttftMs": 1780.1423999999988,
+    "totalMs": 3097.145699999999,
+    "characters": 293,
+    "reasoningCharacters": 0,
+    "hasFunction": true,
+    "hasEmptyGuard": true,
+    "response": "\n\n```python\ndef largest_number(numbers):\n    if not numbers:\n        raise ValueError(\"The list is empty\")\n    return max(numbers)\n```\n\nThis checks whether the list is empty. If it is, it raises a `ValueError`. Otherwise, it returns the largest number using Python’s built-in `max()` function.",
+    "error": ""
+  }
+]

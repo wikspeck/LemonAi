@@ -3,7 +3,8 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <RootNamespace>Lemon2</RootNamespace><Version>2.1.0</Version><AssemblyVersion>2.1.0.0</AssemblyVersion>
+    <RootNamespace>Lemon2</RootNamespace><Version>2.2.0</Version><AssemblyVersion>2.2.0.0</AssemblyVersion>
+    <ApplicationIcon>Assets\lemon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x64</Platforms><RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <UseWinUI>true</UseWinUI><WindowsPackageType>None</WindowsPackageType>
@@ -11,6 +12,7 @@
     <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup><PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260209005" /></ItemGroup>
+<ItemGroup><Content Include="Assets\lemon.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
 <ItemGroup><ProjectReference Include="..\Lemon2.Core\Lemon2.Core.csproj" /></ItemGroup><Target Name="PublishNativeXaml" AfterTargets="Publish">
  <ItemGroup><NativeXamlFiles Include="$(OutDir)*.xbf" /><NativePriFiles Include="$(OutDir)*.pri" /></ItemGroup>
  <Copy SourceFiles="@(NativeXamlFiles)" DestinationFiles="@(NativeXamlFiles->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')" />

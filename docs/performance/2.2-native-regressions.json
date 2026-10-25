@@ -1,0 +1,32 @@
+[
+  {
+    "metric": "markdown_25_rebinds_ms",
+    "value": 71.1928,
+    "characters": 11369
+  },
+  {
+    "metric": "stream_30_updates_elapsed_ms",
+    "value": 1875.9059,
+    "scheduledDelayMs": 1650
+  },
+  {
+    "metric": "dispatcher_queue_median_ms",
+    "value": 0.0026
+  },
+  {
+    "metric": "canvas_40_rebinds_ms",
+    "value": 21.6086
+  },
+  {
+    "metric": "working_set_bytes",
+    "value": 173608960
+  },
+  {
+    "metric": "rasterization_scale",
+    "value": 1.25
+  },
+  {
+    "metric": "canvas_state_rebinding_verified",
+    "value": 1
+  }
+]

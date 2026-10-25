@@ -1,5 +1,5 @@
 namespace Lemon2;
-public sealed record GenerationConfig(string Tier = "zenith", string Effort = "medium", string OutputMode = "canvas");
+public sealed record GenerationConfig(string Tier = "zenith", string Effort = "medium", string OutputMode = "markdown", string ResponseLanguage = "auto");
 public sealed record ModelEntry(string Id, string Name, string ApiId, string Family, string Tier, int Context, bool Enabled, string Availability);
 public sealed record ModelCatalogue(int Version, List<ModelEntry> Models, Dictionary<string,string> TierDefaults);
 public sealed record CanvasComponent(string Type, string? Text = null, string? Label = null, string? Key = null, double Min = 0, double Max = 0, double InitialNumber = 0, bool InitialBoolean = false, string? Operation = null, string[]? Inputs = null);

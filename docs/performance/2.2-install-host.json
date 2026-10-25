@@ -1,0 +1,24 @@
+{
+  "installer": "C:\\Users\\wiksp\\Documents\\GitHub\\lemonai\\native\\artifacts\\2.2.0\\Lemon-2.2.0-Setup.exe",
+  "installerSha256": "c449302b28bd771be7a2f5f405c009381a02255cf0327dd175dcfc3397fc0972",
+  "installed": true,
+  "startMenu": "C:\\Users\\wiksp\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Lemon\\Lemon.lnk",
+  "desktop": "C:\\Users\\wiksp\\Desktop\\Lemon.lnk",
+  "target": "C:\\Users\\wiksp\\AppData\\Local\\Programs\\Lemon\\Lemon2.exe",
+  "version": "2.2.0",
+  "historyHashBefore": "318E9F41AF82AF20F73EF83BC0D183943BFF11D12A34557C00CCAFBE1622A1E5",
+  "cleanWindows": false,
+  "testedInstallerSha256": "c449302b28bd771be7a2f5f405c009381a02255cf0327dd175dcfc3397fc0972",
+  "uninstallVerified": true,
+  "userDataPreserved": true,
+  "canvasStatePersisted": true,
+  "liveLanguagesVerified": [
+    "en",
+    "de",
+    "pl"
+  ],
+  "fullscreenVerified": true,
+  "displayScale": 1.25,
+  "codeThemesVerified": true,
+  "reinstalledForUser": true
+}

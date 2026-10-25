@@ -8,7 +8,25 @@ using Windows.ApplicationModel.DataTransfer;
 namespace Lemon2;
 public sealed partial class MessageView : UserControl
 {
+    public UiStrings Strings { get; } = (UiStrings)Application.Current.Resources["Strings"];
     private Message? message;
+    private Message? renderedMessage;
+    private string? renderedContent, renderedCanvas;
+    private bool renderedStreaming;
+    private string? renderedStyle;
+    private TextBlock? streamingText;
+    private StackPanel? streamingPanel;
+    private void AppendStreamingText(string content)
+    {
+        if(streamingPanel is null||streamingText is null)return;
+        var lines=content.Replace("\r", "").Split('\n');
+        for(var index=0;index<lines.Length;index++){
+            if(index>0 && streamingPanel.Children.Count<512){streamingText=StreamLine();streamingPanel.Children.Add(streamingText);}
+            else if(index>0)streamingText.Text+="\n";
+            streamingText.Text+=lines[index];
+        }
+    }
+    private static TextBlock StreamLine() => new(){TextWrapping=TextWrapping.Wrap,IsTextSelectionEnabled=true,FontSize=16,LineHeight=26,MinHeight=26};
     private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(45) };
     public MessageView()
     {
@@ -35,8 +53,14 @@ public sealed partial class MessageView : UserControl
     }
     private void Render()
     {
-        Body.Children.Clear(); if (message is null) return;
-        CanvasPresentation.Normalize(message);
+        if (message is null) { Body.Children.Clear(); renderedMessage = null; renderedContent = null; renderedCanvas = null; return; }
+        var style = message.Role + ":" + message.OutputMode + ":" + L.Language;
+        CopyButton.Content = L.T("Copy");
+        if (renderedMessage is not null && renderedContent == message.Content && renderedCanvas == message.CanvasJson && renderedStreaming == message.IsStreaming && renderedStyle == style) { renderedMessage = message; return; }
+        if(message.IsStreaming && ReferenceEquals(renderedMessage,message) && streamingPanel is not null && renderedContent is not null && message.Content.StartsWith(renderedContent,StringComparison.Ordinal)){AppendStreamingText(message.Content[renderedContent.Length..]);renderedContent=message.Content;return;}
+        renderedMessage = message; renderedContent = message.Content; renderedCanvas = message.CanvasJson; renderedStreaming = message.IsStreaming; renderedStyle = style;
+        Body.Children.Clear(); streamingText = null; streamingPanel=null;
+        if(message.IsStreaming){streamingPanel=new StackPanel{Spacing=0};streamingText=StreamLine();streamingPanel.Children.Add(streamingText);Body.Children.Add(streamingPanel);AppendStreamingText(message.Content);return;}
         CopyButton.Visibility = message.Content.Length > 0 || message.CanvasJson is not null ? Visibility.Visible : Visibility.Collapsed;
         if (message.CanvasJson is not null && message.Content.Length == 0) return;
         if (message.OutputMode == "text" || message.Role == "user") { Body.Children.Add(new TextBlock { Text = message.Content, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true, FontSize = 16, LineHeight = 26 }); return; }
@@ -51,10 +75,10 @@ public sealed partial class MessageView : UserControl
                 var source = string.Join('\n', code);
                 var panel = new StackPanel { Spacing = 10 };
                 var heading = new Grid(); heading.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) }); heading.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-                heading.Children.Add(new TextBlock { Text = string.IsNullOrEmpty(language) ? "Code" : language, Opacity = .65, FontSize = 12 });
-                var copy = new Button { Content = "Code kopieren", FontSize = 12, Padding = new Thickness(8, 3, 8, 3) }; copy.Click += (_, _) => Copy(source); Grid.SetColumn(copy, 1); heading.Children.Add(copy); panel.Children.Add(heading);
+                heading.Children.Add(new TextBlock { Text = string.IsNullOrEmpty(language) ? L.T("Code") : language, Opacity = .65, FontSize = 12 });
+                var copy = new Button { Content = L.T("CopyCode"), FontSize = 12, Padding = new Thickness(8, 3, 8, 3) }; copy.Click += (_, _) => Copy(source); Grid.SetColumn(copy, 1); heading.Children.Add(copy); panel.Children.Add(heading);
                 panel.Children.Add(new TextBlock { Text = source, FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 14, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
-                Body.Children.Add(new Border { Background = (Brush)Application.Current.Resources["LayerFillColorDefaultBrush"], CornerRadius = new CornerRadius(12), Padding = new Thickness(16), Child = panel }); continue;
+                Body.Children.Add(new Border { Style = (Style)Application.Current.Resources["LemonCodeBlock"], Child = panel }); continue;
             }
             if (index + 1 < lines.Length && line.Contains('|') && Regex.IsMatch(lines[index + 1], @"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$"))
             {
@@ -81,5 +105,5 @@ public sealed partial class MessageView : UserControl
     }
     private static string[] Cells(string line) => line.Trim().Trim('|').Split('|').Select(cell => cell.Trim()).Take(12).ToArray();
     private static void Copy(string content) { try { var data = new DataPackage(); data.SetText(content); Clipboard.SetContent(data); } catch { } }
-    private void Copy_Click(object sender, RoutedEventArgs e) { if (message is not null) Copy(message.Content.Length > 0 ? message.Content : "Interaktive Antwort: " + CanvasParser.Parse(message.CanvasJson!).Title); }
+    private void Copy_Click(object sender, RoutedEventArgs e) { if (message is not null) Copy(message.Content.Length > 0 ? message.Content : message.GetCanvasDocument().Title); }
 }
