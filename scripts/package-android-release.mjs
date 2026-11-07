@@ -1,0 +1,20 @@
+import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+const apk = 'native/LumeNotebooks/app/build/outputs/apk/release/app-release.apk';
+const evidence = JSON.parse(await fs.readFile('work/lume/android-release-evidence.json','utf8'));
+const payload = await fs.readFile(apk);
+const sha256 = crypto.createHash('sha256').update(payload).digest('hex');
+if (evidence.sha256 !== sha256 || !evidence.install || !evidence.offlineEditing || !evidence.restart || !evidence.nativeTestsPassed) throw new Error('Release APK lacks matching device evidence');
+const java = path.join(process.env.JAVA_HOME, 'bin', 'java.exe');
+const jar = path.join(process.env.ANDROID_HOME, 'build-tools', '36.1.0', 'lib', 'apksigner.jar');
+const verification = spawnSync(java, ['-jar',jar,'verify','--verbose','--print-certs',apk],{encoding:'utf8'});
+if (verification.status !== 0 || !verification.stdout.includes('CN=Lume Notebooks') || verification.stdout.includes('Android Debug')) throw new Error('Valid dedicated release signature required');
+const certificateSha256 = verification.stdout.match(/certificate SHA-256 digest: ([a-f0-9]+)/)?.[1];
+if (!certificateSha256) throw new Error('Missing signer fingerprint');
+const parts = [];
+for(let offset = 0,index=1;offset<payload.length;offset+=16*1024*1024,index++) { const url=`/downloads/lume-1.0.0-part-${String(index).padStart(3,'0')}.bin`; await fs.writeFile('public'+url,payload.subarray(offset,offset+16*1024*1024)); parts.push(url); }
+const manifest = { published:true, version:'1.0.0', bytes:payload.length, sha256, certificateSha256, fileName:'Lume-Notebooks-1.0.0.apk', parts, testedAt:evidence.testedAt };
+await fs.writeFile('public/downloads/android-release.json',JSON.stringify(manifest,null,2)+'\n');
+console.log(`Signed Android release packaged: ${payload.length} bytes, SHA-256 ${sha256}`);

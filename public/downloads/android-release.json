@@ -1,0 +1,15 @@
+{
+  "published": true,
+  "version": "1.0.0",
+  "bytes": 60126002,
+  "sha256": "05f2da095a18f71ad2b07bff14901476cf634b02349f31315b545ba324f16ae0",
+  "certificateSha256": "6504bd5a48cc3c2697de8c3465eaa1869e073e3a49a9182f9c8d148f5333e07b",
+  "fileName": "Lume-Notebooks-1.0.0.apk",
+  "parts": [
+    "/downloads/lume-1.0.0-part-001.bin",
+    "/downloads/lume-1.0.0-part-002.bin",
+    "/downloads/lume-1.0.0-part-003.bin",
+    "/downloads/lume-1.0.0-part-004.bin"
+  ],
+  "testedAt": "2026-11-07T02:34:41.749Z"
+}

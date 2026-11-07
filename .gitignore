@@ -54,3 +54,15 @@ next-env.d.ts
 /native/artifacts/
 
 /public/downloads/*.bin
+
+# Lume Android local build state and private signing material
+/native/LumeNotebooks/.gradle/
+/native/LumeNotebooks/**/build/
+/native/LumeNotebooks/local.properties
+/native/LumeNotebooks/signing.properties
+/native/LumeNotebooks/signing/
+*.jks
+*.keystore
+/output/playwright/
+/public/offline-assets.json
+/public/offline-version.js

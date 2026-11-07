@@ -1,6 +1,18 @@
-# Lemon AI 2.1
+# Lume Notebooks
 
-Lemon is a native C#/WinUI 3 Windows AI application. The Next.js site is now the product/download website; Cloudflare Workers AI and the existing v1/v2 API routes remain in the same Worker.
+Lume Notebooks adapts this existing Next.js / Cloudflare / Lemon codebase into a local-first notebook workspace. Open `/` for notebooks; the previous Windows product website remains at `/legacy`. Existing v1/v2 chat APIs, Windows downloads, and legacy local-storage keys are preserved.
+
+Features include notebooks and nested sections, a rich-text/Markdown editor, autosave with revision history and conflict copies, global search, local PDF/text/image OCR imports, cited notebook AI, draft review before insertion, study cards/quizzes, backup export/import, themes, and an offline installable PWA. Notes and attachments stay in IndexedDB; AI receives retrieved excerpts only after a user action. Automatic routing uses Llama for quick edits and DeepSeek R1 Distill Qwen 32B for deeper tasks through the existing server-side Workers AI binding.
+
+The separate [native Kotlin/Compose Android app](native/LumeNotebooks/README.md) uses Room, offline editing, PDF/image text extraction, shares, and the same AI API. Its release APK download streams verified segments through `/downloads/Lume-Notebooks-1.0.0.apk`; version, size, checksum, and installation guidance come from `public/downloads/android-release.json`. Release tests and signature checks must match the exact APK before `scripts/package-android-release.mjs` enables it. The AAB is built alongside the APK.
+
+Cloud accounts, cloud sync, D1 metadata, and R2 uploads are **not enabled**. The PWA and native app have separate local stores. Backups can move data into the web app without replacing existing records. A first online visit caches the PWA editor; AI and first-use web OCR need connectivity.
+
+Development: `npm run dev`. Production: `npm run build`, then `npm start`. Regression checks: `node --experimental-strip-types --test tests/*.test.mjs`. Deployment: `npm run deploy` validates both existing Windows and new Android download integrity before building with OpenNext and publishing to the existing Worker. See the [migration plan](docs/lume-notebooks-migration.md).
+
+## Retained Lemon Windows application
+
+Lemon is the retained native C#/WinUI 3 Windows AI application. Cloudflare Workers AI and its existing v1/v2 API routes remain in the same Worker.
 
 ## Windows app
 
